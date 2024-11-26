@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, JSON, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from sqlalchemy.dialects.postgresql import JSONB
 from app.database import Base
 
 class Thing(Base):
@@ -9,9 +10,9 @@ class Thing(Base):
     id = Column(String, primary_key=True)
     uri = Column(String, unique=True, nullable=False)
     type = Column(String, nullable=False)
-    name = Column(JSON, nullable=False)  # Multilingual support
-    manufacturer = Column(JSON)
-    properties = Column(JSON)
+    name = Column(JSONB, nullable=False)  # Changed from JSON to JSONB
+    manufacturer = Column(JSONB)          # Changed from JSON to JSONB
+    properties = Column(JSONB)            # Changed from JSON to JSONB
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
@@ -19,17 +20,41 @@ class Thing(Base):
     stories = relationship("Story", back_populates="thing", cascade="all, delete-orphan")
     relationships = relationship("Relationship", back_populates="thing", cascade="all, delete-orphan")
 
+    def to_dict(self):
+        """Convert model to dictionary with proper datetime handling."""
+        return {
+            'id': self.id,
+            'uri': self.uri,
+            'type': self.type,
+            'name': self.name,
+            'manufacturer': self.manufacturer,
+            'properties': self.properties,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
 class Story(Base):
     __tablename__ = "stories"
 
     id = Column(String, primary_key=True)
     thing_id = Column(String, ForeignKey("things.id"))
-    version = Column(JSON, nullable=False)
+    version = Column(JSONB, nullable=False)  # Changed from JSON to JSONB
     type = Column(String, nullable=False)
-    procedure = Column(JSON, nullable=False)
+    procedure = Column(JSONB, nullable=False)  # Changed from JSON to JSONB
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     thing = relationship("Thing", back_populates="stories")
+
+    def to_dict(self):
+        """Convert model to dictionary with proper datetime handling."""
+        return {
+            'id': self.id,
+            'thing_id': self.thing_id,
+            'version': self.version,
+            'type': self.type,
+            'procedure': self.procedure,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
 
 class Relationship(Base):
     __tablename__ = "relationships"
@@ -38,7 +63,18 @@ class Relationship(Base):
     thing_id = Column(String, ForeignKey("things.id"))
     relationship_type = Column(String, nullable=False)
     target_uri = Column(String, nullable=False)
-    relation_metadata = Column(JSON)
+    relation_metadata = Column(JSONB)  # Changed from JSON to JSONB
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     thing = relationship("Thing", back_populates="relationships")
+
+    def to_dict(self):
+        """Convert model to dictionary with proper datetime handling."""
+        return {
+            'id': self.id,
+            'thing_id': self.thing_id,
+            'relationship_type': self.relationship_type,
+            'target_uri': self.target_uri,
+            'relation_metadata': self.relation_metadata,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
