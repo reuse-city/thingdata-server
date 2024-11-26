@@ -47,9 +47,6 @@ logs/
 *.sqlite3
 postgres_data/
 
-# MinIO
-minio_data/
-
 # Docker
 .docker/
 docker-compose.override.yml

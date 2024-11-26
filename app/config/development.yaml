@@ -1,4 +1,3 @@
-# Development configuration
 server:
   host: "0.0.0.0"
   port: 8000
@@ -13,8 +12,6 @@ database:
   max_overflow: 10
 
 storage:
-  s3_endpoint: "http://minio:9000"
-  bucket: "thingdata"
   local_cache: "/data/local_cache"
   cache_ttl: 604800  # 7 days in seconds
 

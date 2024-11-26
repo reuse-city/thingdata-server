@@ -107,15 +107,12 @@ class HealthChecker:
         try:
             from app.storage import storage_manager
             
-            # Check S3/MinIO connectivity
-            storage_status = await storage_manager.check_health()
-            
             # Check disk space
             disk = psutil.disk_usage('/')
             if disk.percent > 90:
                 return ComponentStatus.DEGRADED
                 
-            return storage_status
+            return await storage_manager.check_health()
             
         except Exception as e:
             logger.error(f"Storage health check failed: {str(e)}")
@@ -125,14 +122,7 @@ class HealthChecker:
         """Check federation network health."""
         try:
             from app.federation import federation_manager
-            
-            # Check federation network
-            federation_status = await federation_manager.check_health()
-            
-            # Additional federation metrics could be checked here
-            
-            return federation_status
-            
+            return await federation_manager.check_health()
         except Exception as e:
             logger.error(f"Federation health check failed: {str(e)}")
             return ComponentStatus.UNHEALTHY
@@ -143,20 +133,20 @@ class HealthChecker:
             memory = psutil.virtual_memory()
             cpu_percent = psutil.cpu_percent(interval=1)
             
-            # Get active connections (could be tracked in your app)
-            active_connections = 0  # Implement connection tracking
-            
             # Get storage usage
             storage_usage = psutil.disk_usage('/').percent
             
-            # Get federation peers count
-            from app.federation import federation_manager
-            federation_peers = len(federation_manager.known_instances)
+            # Get federation peers count (if available)
+            try:
+                from app.federation import federation_manager
+                federation_peers = len(federation_manager.known_instances)
+            except:
+                federation_peers = 0
             
             return HealthMetrics(
                 memory_usage=memory.percent,
                 cpu_usage=cpu_percent,
-                active_connections=active_connections,
+                active_connections=0,  # TODO: Implement connection tracking
                 storage_usage=storage_usage,
                 federation_peers=federation_peers
             )

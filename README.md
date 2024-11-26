@@ -7,7 +7,6 @@ ThingData is a data-powered solution to promote a longer lifetime for goods and 
 - Thing management (products, objects, materials)
 - Repair stories and procedures
 - Relationship mapping between things
-- Federation capabilities
 - Multi-language support
 - API-first design
 
@@ -23,7 +22,7 @@ ThingData is a data-powered solution to promote a longer lifetime for goods and 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/reuse-city/thingdata-server.git
+git clone git@github.com:reuse-city/thingdata-server.git
 cd thingdata-server
 ```
 
@@ -37,20 +36,12 @@ The server will be available at:
 - Documentation: http://localhost:8000/docs
 - Alternative documentation: http://localhost:8000/redoc
 
-### Development
-
-To run the development version with hot reloading:
-```bash
-docker-compose -f docker-compose.dev.yml up --build
-```
-
-## API Documentation
+### API Documentation
 
 The API documentation is available at `/docs` when the server is running. It provides:
 - Interactive API exploration
 - Request/response examples
 - Schema documentation
-- Authentication details
 
 ## Contributing
 

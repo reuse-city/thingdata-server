@@ -56,7 +56,7 @@ class RelationshipCreate(BaseModel):
     thing_id: str
     relationship_type: str
     target_uri: str
-    relation_metadata: Optional[Dict[str, Any]] = None  # Changed from metadata to relation_metadata
+    relation_metadata: Optional[Dict[str, Any]] = None
 
 class RelationshipResponse(RelationshipCreate):
     id: str

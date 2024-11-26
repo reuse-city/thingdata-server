@@ -38,7 +38,7 @@ class Relationship(Base):
     thing_id = Column(String, ForeignKey("things.id"))
     relationship_type = Column(String, nullable=False)
     target_uri = Column(String, nullable=False)
-    relation_metadata = Column(JSON)  # Changed from metadata to relation_metadata
+    relation_metadata = Column(JSON)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     thing = relationship("Thing", back_populates="relationships")

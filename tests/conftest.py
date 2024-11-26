@@ -4,19 +4,15 @@ from typing import AsyncGenerator, Generator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 import os
-from datetime import datetime
-import aiohttp
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.database import Base, get_db
-from app.models import Thing, Story, Relationship
-from app.dev.tools import DevTools
 
 # Test database URL
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://thingdata:thingdata@db/thingdata_test"
+    "postgresql://thingdata:thingdata@db/thingdata_test"
 )
 
 # Create async engine for tests
@@ -67,31 +63,3 @@ def client(db_session: AsyncSession) -> Generator:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
-
-@pytest.fixture
-async def test_data(db_session: AsyncSession):
-    """Generate test data for tests."""
-    dev_tools = DevTools()
-    data = await dev_tools.generate_test_data(
-        num_things=5,
-        num_stories_per_thing=2,
-        num_relationships=3
-    )
-    
-    # Add to database
-    for thing in data["things"]:
-        db_session.add(thing)
-    for story in data["stories"]:
-        db_session.add(story)
-    for relationship in data["relationships"]:
-        db_session.add(relationship)
-        
-    await db_session.commit()
-    
-    return data
-
-@pytest.fixture
-async def mock_federation(db_session: AsyncSession):
-    """Create mock federation network for tests."""
-    dev_tools = DevTools()
-    return await dev_tools.mock_

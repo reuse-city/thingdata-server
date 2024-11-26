@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 import psutil
 
-from app.database import get_db
+from app.database import get_db, Base, engine
 from app.models import Thing, Story, Relationship
 from app.schemas import (
     ThingCreate, ThingResponse,
@@ -17,6 +17,9 @@ from app.schemas import (
 from app.logger import setup_logger
 
 logger = setup_logger(__name__)
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="ThingData Server",
@@ -33,13 +36,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add this after the CORS middleware configuration and before other endpoints
-
-@app.get("/", tags=["General"])
+@app.get("/")
 async def root():
-    """
-    Get API information and documentation links.
-    """
+    """Get API information and documentation links."""
     return {
         "name": "ThingData API",
         "version": "0.1.0",
@@ -53,7 +52,7 @@ async def root():
             "stories": "/api/v1/stories",
             "relationships": "/api/v1/relationships"
         },
-        "repository": "https://github.com/your-repo/thingdata",
+        "repository": "https://github.com/reuse-city/thingdata-server",
         "contact": {
             "name": "ThingData Team",
             "website": "https://thingdata.org",
@@ -73,7 +72,6 @@ async def health_check():
         logger.error(f"Database health check failed: {str(e)}")
         db_status = ComponentStatus.UNHEALTHY
 
-    # System metrics
     memory = psutil.virtual_memory()
     cpu_percent = psutil.cpu_percent()
 
@@ -144,7 +142,6 @@ async def list_things(
 async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
     """Create a new repair story."""
     try:
-        # Verify thing exists
         thing = db.query(Thing).filter(Thing.id == story.thing_id).first()
         if not thing:
             raise HTTPException(status_code=404, detail=f"Thing {story.thing_id} not found")
@@ -191,7 +188,6 @@ async def get_thing_stories(thing_id: str, db: Session = Depends(get_db)):
 async def create_relationship(relationship: RelationshipCreate, db: Session = Depends(get_db)):
     """Create a new relationship between things."""
     try:
-        # Verify source thing exists
         thing = db.query(Thing).filter(Thing.id == relationship.thing_id).first()
         if not thing:
             raise HTTPException(status_code=404, detail=f"Thing {relationship.thing_id} not found")
@@ -229,23 +225,6 @@ async def get_thing_relationships(thing_id: str, db: Session = Depends(get_db)):
     """Get all relationships for a thing."""
     relationships = db.query(Relationship).filter(Relationship.thing_id == thing_id).all()
     return relationships
-
-@app.delete("/api/v1/relationships/{relationship_id}")
-async def delete_relationship(relationship_id: str, db: Session = Depends(get_db)):
-    """Delete a relationship."""
-    relationship = db.query(Relationship).filter(Relationship.id == relationship_id).first()
-    if not relationship:
-        raise HTTPException(status_code=404, detail="Relationship not found")
-    
-    try:
-        db.delete(relationship)
-        db.commit()
-        logger.info(f"Deleted relationship {relationship_id}")
-        return {"status": "success", "message": "Relationship deleted"}
-    except Exception as e:
-        logger.error(f"Failed to delete relationship: {str(e)}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

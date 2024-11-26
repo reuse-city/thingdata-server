@@ -1,36 +1,30 @@
 services:
-  api:
+  test:
     build: 
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://thingdata:thingdata@db/thingdata
-      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql://thingdata:thingdata@db/thingdata_test
+      - ENVIRONMENT=test
       - LOG_LEVEL=DEBUG
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./app:/src/app
-      - ./logs:/logs
+      - ./tests:/src/tests
+    command: pytest -v
 
   db:
     image: postgres:15-alpine
     environment:
       - POSTGRES_USER=thingdata
       - POSTGRES_PASSWORD=thingdata
-      - POSTGRES_DB=thingdata
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - POSTGRES_DB=thingdata_test
+    tmpfs:
+      - /var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U thingdata"]
       interval: 5s
       timeout: 5s
       retries: 5
-
-volumes:
-  postgres_data:
