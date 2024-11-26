@@ -1,6 +1,10 @@
 # ThingData Server
 
-ThingData is a data-powered solution to promote a longer lifetime for goods and materials. This repository contains the reference implementation of the ThingData Protocol server.
+ThingData Server is a data-powered solution to promote a longer lifetime for goods and materials. This repository contains the reference implementation of the ThingData Protocol server.
+
+The server is a working prototype. It is based on design concepts created by [Felipe Schmidt Fonseca](https://is.efeefe.me) for his [PhD research](https://wiki.reuse.city/opendott). 
+
+Software in this repository was developed with assistance of Large Language Models. At this point, it should be analysed thoroughly before being deployed.
 
 ## Features
 
