@@ -220,9 +220,3 @@ curl -X POST http://localhost:8000/api/v1/federation/announce \
 - See [Advanced Operations](advanced-operations.md) for conflict resolution
 - See [Example Workflows](../workflows.md) for practical examples
 - See [Core API](README.md) for basic operations
-
-Would you like me to:
-1. Add more examples?
-2. Add configuration documentation?
-3. Add troubleshooting guides?
-4. Create implementation guides?

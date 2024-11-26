@@ -1,38 +1,33 @@
 # ThingData Server API Documentation
 
+> Note: This documentation covers currently implemented features only. For planned features and future development, see our [Roadmap](../../ROADMAP.md) and [Implementation Status](../../IMPLEMENTATION_STATUS.md).
+
 ## Core Concepts
 
 ### Things
-A "Thing" represents any physical object that can be repaired, maintained, or modified. Things can be appliances, electronics, furniture, tools, or any other physical items. Each thing has:
+A "Thing" represents any physical object that can be repaired, maintained, or modified. Currently implemented features:
 
 - Unique identifier and URI
 - Type classification
 - Multilingual name and descriptions
 - Manufacturer information
-- Physical properties (dimensions, materials, etc.)
-- Relationships with other things
-- Associated repair stories
+- Basic physical properties (dimensions, materials)
 
 ### Stories
-Stories document repair, maintenance, or modification procedures for things. They capture:
+Stories document repair, maintenance, or modification procedures. Currently implemented features:
 
-- Step-by-step procedures
-- Tools and parts required
+- Basic step-by-step procedures
+- Tool requirements
 - Safety warnings
-- Supporting media (images, diagrams)
-- Versions and history
-- Multiple language support
+- Multi-language support for descriptions
 
 ### Relationships
-Relationships define connections between things, such as:
+Basic relationships between things are supported, including:
 
 - Component relationships (part-of)
-- Tool requirements (requires-tool)
-- Compatibility (works-with)
-- Consumable relationships (uses-consumable)
-- Alternative parts (can-replace)
+- Basic compatibility information
 
-## API Endpoints
+## Working API Endpoints
 
 ### Thing Management
 
@@ -95,8 +90,7 @@ POST /api/v1/stories
         }
       },
       "warnings": ["Disconnect power first"],
-      "tools": ["Phillips screwdriver"],
-      "media": ["image1.jpg"]
+      "tools": ["Phillips screwdriver"]
     }
   ]
 }
@@ -112,131 +106,29 @@ GET /api/v1/stories/{story_id}
 GET /api/v1/things/{thing_id}/stories
 ```
 
-### Relationship Management
-
-#### Create Relationship
-```http
-POST /api/v1/relationships
-
-{
-  "thing_id": "uuid",
-  "relationship_type": "component",
-  "target_uri": "thing:appliance/coffeemachine/pump",
-  "relation_metadata": {
-    "required": true,
-    "quantity": 1,
-    "position": "internal"
-  }
-}
-```
-
-#### Get Thing Relationships
-```http
-GET /api/v1/things/{thing_id}/relationships
-```
-
-### System Information
-
-#### Health Check
+### Basic Health Check
 ```http
 GET /health
 ```
 
-## Data Models
+## Working Example
 
-### Thing Schema
-```typescript
-interface Thing {
-  id: string;
-  uri: string;
-  type: string;
-  name: {
-    default: string;
-    translations: Record<string, string>;
-  };
-  manufacturer: {
-    name: string;
-    website?: string;
-    contact?: string;
-  };
-  properties: {
-    dimensions?: {
-      length: number;
-      width: number;
-      height: number;
-    };
-    materials: string[];
-    manufacturing_date?: string;
-    serial_number?: string;
-  };
-  created_at: string;
-  updated_at?: string;
-}
-```
+Here's a complete working example of creating a thing and its repair story:
 
-### Story Schema
-```typescript
-interface Story {
-  id: string;
-  thing_id: string;
-  type: string;
-  version: {
-    number: string;
-    date: string;
-    history: Array<{
-      version: string;
-      date: string;
-      changes: string[];
-    }>;
-  };
-  procedure: Array<{
-    order: number;
-    description: {
-      default: string;
-      translations: Record<string, string>;
-    };
-    warnings: string[];
-    tools: string[];
-    media: string[];
-  }>;
-  created_at: string;
-}
-```
-
-### Relationship Schema
-```typescript
-interface Relationship {
-  id: string;
-  thing_id: string;
-  relationship_type: string;
-  target_uri: string;
-  relation_metadata?: {
-    required?: boolean;
-    quantity?: number;
-    position?: string;
-  };
-  created_at: string;
-}
-```
-
-## Usage Examples
-
-### Creating a Complete Repair Guide
-1. Create the main thing:
 ```bash
+# 1. Create a thing
 curl -X POST http://localhost:8000/api/v1/things \
 -H "Content-Type: application/json" \
 -d '{
   "type": "appliance",
   "name": {
-    "default": "Coffee Machine Model X",
+    "default": "Coffee Machine XK-42",
     "translations": {
-      "es": "Máquina de Café Modelo X"
+      "es": "Máquina de Café XK-42"
     }
   },
   "manufacturer": {
-    "name": "BaristaPlus",
-    "website": "https://example.com"
+    "name": "BaristaPlus"
   },
   "properties": {
     "dimensions": {
@@ -244,32 +136,18 @@ curl -X POST http://localhost:8000/api/v1/things \
       "width": 20.0,
       "height": 40.0
     },
-    "materials": ["steel", "plastic", "glass"]
+    "materials": ["steel", "plastic"]
   }
 }'
-```
 
-2. Create relationships for components:
-```bash
-curl -X POST http://localhost:8000/api/v1/relationships \
--H "Content-Type: application/json" \
--d '{
-  "thing_id": "THING_ID_HERE",
-  "relationship_type": "component",
-  "target_uri": "thing:appliance/coffeemachine/pump",
-  "relation_metadata": {
-    "required": true,
-    "quantity": 1
-  }
-}'
-```
+# Save the returned ID
+THING_ID="returned_id_here"
 
-3. Create a repair story:
-```bash
+# 2. Create a repair story
 curl -X POST http://localhost:8000/api/v1/stories \
 -H "Content-Type: application/json" \
 -d '{
-  "thing_id": "THING_ID_HERE",
+  "thing_id": "'$THING_ID'",
   "type": "repair",
   "procedure": [
     {
@@ -282,56 +160,33 @@ curl -X POST http://localhost:8000/api/v1/stories \
       },
       "warnings": ["Disconnect power first"],
       "tools": ["Phillips screwdriver"]
-    },
-    {
-      "order": 2,
-      "description": {
-        "default": "Replace the pump",
-        "translations": {
-          "es": "Reemplace la bomba"
-        }
-      },
-      "tools": ["wrench", "pliers"]
     }
   ]
 }'
 ```
 
-## Best Practices
-
-1. **Multilingual Support**
-   - Always provide a default language version
-   - Use ISO language codes for translations
-   - Keep translations consistent across related items
-
-2. **Relationships**
-   - Use clear, descriptive relationship types
-   - Include relevant metadata for maintenance
-   - Document both directions of relationships when applicable
-
-3. **Stories**
-   - Break procedures into clear, manageable steps
-   - Include all necessary safety warnings
-   - Document required tools and skills
-   - Use clear, unambiguous language
-
-4. **Media and Documentation**
-   - Use high-quality images
-   - Include multiple angles when relevant
-   - Label diagrams clearly
-   - Reference official documentation when available
-
 ## Error Handling
 
-The API uses standard HTTP status codes:
+The API currently implements standard HTTP status codes:
 - 200: Success
 - 400: Bad Request (invalid input)
 - 404: Not Found
 - 500: Server Error
 
-Error responses include detail messages:
+Error responses include basic detail messages:
 ```json
 {
   "detail": "Error description"
 }
 ```
+
+## Related Documentation
+- See [Implementation Status](../../IMPLEMENTATION_STATUS.md) for current feature status
+- See [Roadmap](../../ROADMAP.md) for planned features
+- See the [Contributing Guide](../../CONTRIBUTING.md) for development setup
+
+## Known Limitations
+- Media file handling is not yet implemented
+- Advanced search features are not available
+- Federation features are not yet implemented
+- Conflict resolution is not yet implemented

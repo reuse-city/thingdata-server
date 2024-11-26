@@ -239,9 +239,3 @@ curl -X POST http://localhost:8000/api/v1/stories/story_id/resolve \
 ```bash
 curl -X GET http://localhost:8000/api/v1/stories/story_id/resolution-status
 ```
-
-Would you like me to:
-1. Add more conflict resolution scenarios?
-2. Add documentation about automated conflict resolution?
-3. Add cleanup and maintenance procedures?
-4. Add federation-specific conflict handling?
