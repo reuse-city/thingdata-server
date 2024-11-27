@@ -1,36 +1,40 @@
 # ThingData Server
 
-ThingData Server is a data-powered solution to promote a longer lifetime for goods and materials. This repository contains the reference implementation of the ThingData Protocol server.
-
-The server is a working prototype. It is based on design concepts created by [Felipe Schmidt Fonseca](https://is.efeefe.me) for his [PhD research](https://wiki.reuse.city/opendott). 
-
-Software in this repository was developed with assistance of Large Language Models. At this point, it should be analysed thoroughly before being deployed.
+ThingData is a data-powered solution to promote a longer lifetime for goods and materials. This repository contains the reference implementation of the ThingData Protocol server.
 
 ## Features
 
-- Thing management (products, objects, materials)
-- Repair stories and procedures
-- Relationship mapping between things
-- Multi-language support
-- API-first design
+### Currently Implemented (v0.1.0)
+- Basic CRUD operations for Things (products, objects, materials)
+- Basic CRUD operations for Repair Stories
+- Basic CRUD operations for Relationships between Things
+- Multi-language support in content
+- Health check endpoint
+- API-first design with OpenAPI/Swagger documentation
+
+### Planned Features
+See our [Roadmap](ROADMAP.md) for details on:
+- Federation capabilities
+- Advanced search
+- File storage
+- Advanced relationship mapping
+- Impact tracking
 
 ## Getting Started
 
 ### Prerequisites
-
 - Docker
 - Docker Compose
 - Git
 
 ### Installation
-
 1. Clone the repository:
 ```bash
 git clone git@github.com:reuse-city/thingdata-server.git
 cd thingdata-server
 ```
 
-2. Start the development server:
+2. Start the server:
 ```bash
 docker-compose up --build
 ```
@@ -40,12 +44,13 @@ The server will be available at:
 - Documentation: http://localhost:8000/docs
 - Alternative documentation: http://localhost:8000/redoc
 
-### API Documentation
+## API Documentation
 
-The API documentation is available at `/docs` when the server is running. It provides:
-- Interactive API exploration
-- Request/response examples
-- Schema documentation
+See our [API Documentation](docs/api/README.md) for:
+- Currently implemented endpoints
+- Data models
+- Usage examples
+- Error handling
 
 ## Contributing
 
@@ -54,6 +59,8 @@ The API documentation is available at `/docs` when the server is running. It pro
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## License
 

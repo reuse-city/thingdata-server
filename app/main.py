@@ -1,12 +1,14 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
 from datetime import datetime
 import psutil
+from pathlib import Path
 
-from app.database import get_db, Base, engine
+from app.database import get_db, init_db
 from app.models import Thing, Story, Relationship
 from app.schemas import (
     ThingCreate, ThingResponse,
@@ -18,12 +20,10 @@ from app.logger import setup_logger
 
 logger = setup_logger(__name__)
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
-
+# Initialize FastAPI app
 app = FastAPI(
     title="ThingData Server",
-    description="ThingData Protocol v1.0 Implementation - Federated Repair Knowledge Network",
+    description="ThingData Protocol v1.0 Implementation",
     version="0.1.0"
 )
 
@@ -36,29 +36,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def root():
-    """Get API information and documentation links."""
-    return {
-        "name": "ThingData API",
-        "version": "0.1.0",
-        "description": "ThingData Protocol v1.0 Implementation - Federated Repair Knowledge Network",
-        "documentation": "/docs",
-        "openapi_schema": "/openapi.json",
-        "redoc_documentation": "/redoc",
-        "health": "/health",
-        "endpoints": {
-            "things": "/api/v1/things",
-            "stories": "/api/v1/stories",
-            "relationships": "/api/v1/relationships"
-        },
-        "repository": "https://github.com/reuse-city/thingdata-server",
-        "contact": {
-            "name": "ThingData Team",
-            "website": "https://thingdata.org",
-            "email": "contact@thingdata.org"
-        }
-    }
+# Favicon handling
+app_dir = Path(__file__).parent
+static_dir = app_dir / "static"
+static_dir.mkdir(exist_ok=True)
+favicon_path = static_dir / "favicon.ico"
+
+if not favicon_path.exists():
+    import base64
+    favicon_data = "AAABAAEAEBAQAAAAAAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA"
+    favicon_path.write_bytes(base64.b64decode(favicon_data))
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    init_db()
+
+@app.get('/favicon.ico')
+async def get_favicon():
+    """Serve favicon."""
+    return FileResponse(favicon_path)
 
 @app.get("/health")
 async def health_check():
@@ -72,6 +69,7 @@ async def health_check():
         logger.error(f"Database health check failed: {str(e)}")
         db_status = ComponentStatus.UNHEALTHY
 
+    # System metrics
     memory = psutil.virtual_memory()
     cpu_percent = psutil.cpu_percent()
 
@@ -90,7 +88,6 @@ async def health_check():
         }
     }
 
-# Thing endpoints
 @app.post("/api/v1/things", response_model=ThingResponse)
 async def create_thing(thing: ThingCreate, db: Session = Depends(get_db)):
     """Create a new thing."""
@@ -110,7 +107,7 @@ async def create_thing(thing: ThingCreate, db: Session = Depends(get_db)):
         db.refresh(db_thing)
         
         logger.info(f"Created thing: {db_thing.id}")
-        return db_thing
+        return db_thing.to_dict()
     except Exception as e:
         logger.error(f"Failed to create thing: {str(e)}")
         db.rollback()
@@ -122,7 +119,7 @@ async def get_thing(thing_id: str, db: Session = Depends(get_db)):
     thing = db.query(Thing).filter(Thing.id == thing_id).first()
     if not thing:
         raise HTTPException(status_code=404, detail="Thing not found")
-    return thing
+    return thing.to_dict()
 
 @app.get("/api/v1/things", response_model=List[ThingResponse])
 async def list_things(
@@ -135,13 +132,14 @@ async def list_things(
     query = db.query(Thing)
     if type:
         query = query.filter(Thing.type == type)
-    return query.offset(skip).limit(limit).all()
+    things = query.offset(skip).limit(limit).all()
+    return [thing.to_dict() for thing in things]
 
-# Story endpoints
 @app.post("/api/v1/stories", response_model=StoryResponse)
 async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
     """Create a new repair story."""
     try:
+        # Verify thing exists
         thing = db.query(Thing).filter(Thing.id == story.thing_id).first()
         if not thing:
             raise HTTPException(status_code=404, detail=f"Thing {story.thing_id} not found")
@@ -163,7 +161,7 @@ async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
         db.refresh(story_db)
         
         logger.info(f"Created story {story_db.id} for thing {story.thing_id}")
-        return story_db
+        return story_db.to_dict()
     except Exception as e:
         logger.error(f"Failed to create story: {str(e)}")
         db.rollback()
@@ -175,56 +173,19 @@ async def get_story(story_id: str, db: Session = Depends(get_db)):
     story = db.query(Story).filter(Story.id == story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
-    return story
+    return story.to_dict()
 
 @app.get("/api/v1/things/{thing_id}/stories", response_model=List[StoryResponse])
 async def get_thing_stories(thing_id: str, db: Session = Depends(get_db)):
     """Get all stories for a thing."""
     stories = db.query(Story).filter(Story.thing_id == thing_id).all()
-    return stories
-
-# Relationship endpoints
-@app.post("/api/v1/relationships", response_model=RelationshipResponse)
-async def create_relationship(relationship: RelationshipCreate, db: Session = Depends(get_db)):
-    """Create a new relationship between things."""
-    try:
-        thing = db.query(Thing).filter(Thing.id == relationship.thing_id).first()
-        if not thing:
-            raise HTTPException(status_code=404, detail=f"Thing {relationship.thing_id} not found")
-
-        db_relationship = Relationship(
-            id=str(uuid.uuid4()),
-            thing_id=relationship.thing_id,
-            relationship_type=relationship.relationship_type,
-            target_uri=relationship.target_uri,
-            relation_metadata=relationship.relation_metadata,
-            created_at=datetime.utcnow()
-        )
-        
-        db.add(db_relationship)
-        db.commit()
-        db.refresh(db_relationship)
-        
-        logger.info(f"Created relationship {db_relationship.id}")
-        return db_relationship
-    except Exception as e:
-        logger.error(f"Failed to create relationship: {str(e)}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/v1/relationships/{relationship_id}", response_model=RelationshipResponse)
-async def get_relationship(relationship_id: str, db: Session = Depends(get_db)):
-    """Get a specific relationship."""
-    relationship = db.query(Relationship).filter(Relationship.id == relationship_id).first()
-    if not relationship:
-        raise HTTPException(status_code=404, detail="Relationship not found")
-    return relationship
+    return [story.to_dict() for story in stories]
 
 @app.get("/api/v1/things/{thing_id}/relationships", response_model=List[RelationshipResponse])
 async def get_thing_relationships(thing_id: str, db: Session = Depends(get_db)):
     """Get all relationships for a thing."""
     relationships = db.query(Relationship).filter(Relationship.thing_id == thing_id).all()
-    return relationships
+    return [rel.to_dict() for rel in relationships]
 
 if __name__ == "__main__":
     import uvicorn

@@ -6,15 +6,18 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://thingdata:thingdata@db/thingdata
+      - DATABASE_URL=postgresql://thingdata:thingdata@db:5432/thingdata
       - ENVIRONMENT=development
       - LOG_LEVEL=DEBUG
+      - PYTHONPATH=/app
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      - ./app:/src/app
-      - ./logs:/logs
+      - ./app:/app/app
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini
+    working_dir: /app
 
   db:
     image: postgres:15-alpine
