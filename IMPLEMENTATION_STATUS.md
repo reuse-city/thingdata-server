@@ -3,20 +3,26 @@
 ## Current Status
 
 ### Working Features
-- Basic FastAPI setup
+
+- Basic FastAPI setup with complete core endpoints and datetime handling
 - PostgreSQL database connection with proper datetime handling
 - Basic models (Thing, Story, Relationship) with JSONB columns
-- Root endpoint with API information
+- Root endpoint with API information and navigation
 - Health check endpoint with proper SQL handling
 - Favicon handling
 - API documentation with Swagger UI
-- Basic CRUD operations for Things
+- Working CRUD operations for Things
+- Story creation with proper procedure handling
+- Relationship creation between Things
+- Basic error handling and logging
 
 ### Recent Changes
 - Added proper datetime serialization
+- Fixed Story creation procedure handling
+- Implemented Relationship creation
 - Added root endpoint with API information
 - Improved health check implementation
-- Fixed database operations for Thing creation
+- Fixed database operations for all models
 - Implemented proper SQL query handling
 - Moved to JSONB for PostgreSQL columns
 - Removed unused dependencies

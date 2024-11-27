@@ -172,6 +172,9 @@ async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
         if not thing:
             raise HTTPException(status_code=404, detail=f"Thing {story.thing_id} not found")
 
+        # Convert procedure steps to list of dicts
+        procedure_list = [step.model_dump() for step in story.procedure]
+        
         story_db = Story(
             id=str(uuid.uuid4()),
             thing_id=story.thing_id,
@@ -181,7 +184,7 @@ async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
                 "date": datetime.utcnow().isoformat(),
                 "history": []
             },
-            procedure=story.procedure.dict()
+            procedure=procedure_list  # Now using the converted list
         )
         
         db.add(story_db)
@@ -224,6 +227,39 @@ async def get_thing_relationships(thing_id: str, db: Session = Depends(get_db)):
     """Get all relationships for a thing."""
     relationships = db.query(Relationship).filter(Relationship.thing_id == thing_id).all()
     return [rel.to_dict() for rel in relationships]
+
+@app.post("/api/v1/relationships", response_model=RelationshipResponse)
+async def create_relationship(relationship: RelationshipCreate, db: Session = Depends(get_db)):
+    """Create a new relationship between things."""
+    try:
+        # Verify source thing exists
+        source_thing = db.query(Thing).filter(Thing.id == relationship.thing_id).first()
+        if not source_thing:
+            raise HTTPException(status_code=404, detail=f"Source Thing {relationship.thing_id} not found")
+
+        # Verify target thing exists
+        target_thing = db.query(Thing).filter(Thing.id == relationship.target_uri).first()
+        if not target_thing:
+            raise HTTPException(status_code=404, detail=f"Target Thing {relationship.target_uri} not found")
+
+        relationship_db = Relationship(
+            id=str(uuid.uuid4()),
+            thing_id=relationship.thing_id,
+            relationship_type=relationship.relationship_type,
+            target_uri=relationship.target_uri,
+            relation_metadata=relationship.relation_metadata if relationship.relation_metadata else None
+        )
+        
+        db.add(relationship_db)
+        db.commit()
+        db.refresh(relationship_db)
+        
+        logger.info(f"Created relationship {relationship_db.id} between {relationship.thing_id} and {relationship.target_uri}")
+        return relationship_db.to_dict()
+    except Exception as e:
+        logger.error(f"Failed to create relationship: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

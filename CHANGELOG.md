@@ -8,17 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.1] - 2024-11-27
 
 ### Added
-- Root endpoint (/) with API information
+- Root endpoint (/) with API information and links
+- Working Story creation with proper procedure handling
+- Working Relationship creation between Things
 - Improved datetime handling in database operations
 
 ### Fixed
 - Datetime serialization in database operations
+- Story creation procedure handling
+- JSON data handling in relationships
 - Health check status reporting
 
 ### Technical Details
+
+- Using model_dump() for Pydantic models
+- Proper JSONB handling in PostgreSQL
+- Improved error handling and logging
+- Health check using proper SQLAlchemy text()
 - Using proper datetime serialization in models
-- Improved error handling for database operations
-- Health check now properly uses SQLAlchemy text()
 
 ## [0.1.0] - 2024-11-26
 

@@ -32,10 +32,10 @@ Returns:
 
 ## Working Example
 
-Here's a complete working example of creating a thing and its repair story:
+Here's a complete working example of creating a coffee machine, its water tank component, a repair story, and establishing their relationship:
 
 ```bash
-# 1. Create a thing
+# 1. Create a coffee machine
 curl -X POST http://localhost:8000/api/v1/things \
 -H "Content-Type: application/json" \
 -d '{
@@ -47,7 +47,9 @@ curl -X POST http://localhost:8000/api/v1/things \
     }
   },
   "manufacturer": {
-    "name": "BaristaPlus"
+    "name": "BaristaPlus",
+    "website": "https://baristaplus.example.com",
+    "contact": "support@baristaplus.example.com"
   },
   "properties": {
     "dimensions": {
@@ -55,20 +57,21 @@ curl -X POST http://localhost:8000/api/v1/things \
       "width": 20.0,
       "height": 40.0
     },
-    "materials": ["steel", "plastic"],
-    "manufacturing_date": "2024-01-01"  # Note: dates must be in ISO format
+    "materials": ["stainless steel", "plastic", "glass"],
+    "manufacturing_date": "2024-01-01",
+    "serial_number": "XK42-001"
   }
 }'
 
-# The response will include ISO formatted dates:
-{
-  "id": "uuid",
-  "uri": "thing:appliance/BaristaPlus/Coffee Machine XK-42",
-  "type": "appliance",
+# 2. Create its water tank component
+curl -X POST http://localhost:8000/api/v1/things \
+-H "Content-Type: application/json" \
+-d '{
+  "type": "component",
   "name": {
-    "default": "Coffee Machine XK-42",
+    "default": "Water Tank XK-42",
     "translations": {
-      "es": "Máquina de Café XK-42"
+      "es": "Tanque de Agua XK-42"
     }
   },
   "manufacturer": {
@@ -76,17 +79,65 @@ curl -X POST http://localhost:8000/api/v1/things \
   },
   "properties": {
     "dimensions": {
-      "length": 30.0,
-      "width": 20.0,
-      "height": 40.0
+      "length": 15.0,
+      "width": 10.0,
+      "height": 20.0
     },
-    "materials": ["steel", "plastic"],
-    "manufacturing_date": "2024-01-01"
-  },
-  "created_at": "2024-11-27T01:23:45Z",
-  "updated_at": null
-}
+    "materials": ["plastic", "rubber"],
+    "serial_number": "WT-XK42-001"
+  }
+}'
+
+# 3. Create a repair story
+curl -X POST http://localhost:8000/api/v1/stories \
+-H "Content-Type: application/json" \
+-d '{
+  "thing_id": "your_coffee_machine_id",
+  "type": "repair",
+  "procedure": [
+    {
+      "order": 1,
+      "description": {
+        "default": "Remove water tank and filter",
+        "translations": {
+          "es": "Retirar el tanque de agua y el filtro"
+        }
+      },
+      "warnings": ["Ensure machine is cool and unplugged"],
+      "tools": ["none"],
+      "media": []
+    },
+    {
+      "order": 2,
+      "description": {
+        "default": "Clean the water tank with mild soap",
+        "translations": {
+          "es": "Limpiar el tanque con jabón suave"
+        }
+      },
+      "warnings": ["Use only mild soap", "Rinse thoroughly"],
+      "tools": ["soft cloth", "mild soap"],
+      "media": []
+    }
+  ]
+}'
+
+# 4. Create relationship between coffee machine and water tank
+curl -X POST http://localhost:8000/api/v1/relationships \
+-H "Content-Type: application/json" \
+-d '{
+  "thing_id": "your_coffee_machine_id",
+  "relationship_type": "has_component",
+  "target_uri": "your_water_tank_id",
+  "relation_metadata": {
+    "position": "top",
+    "removable": true,
+    "capacity": "1.5L"
+  }
+}'
 ```
+
+All these examples have been tested and are working in the current implementation.
 
 ## Important Notes
 
