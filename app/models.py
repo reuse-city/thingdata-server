@@ -2,18 +2,8 @@ from sqlalchemy import Column, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.types import TypeDecorator
 from app.database import Base
-
-class DateTimeISOFormat(TypeDecorator):
-    """Custom type decorator to handle datetime serialization."""
-    impl = DateTime
-    cache_ok = True
-
-    def process_result_value(self, value, dialect):
-        if value is not None:
-            return value.isoformat()
-        return None
+import json
 
 class Thing(Base):
     __tablename__ = "things"
@@ -24,10 +14,9 @@ class Thing(Base):
     name = Column(JSONB, nullable=False)
     manufacturer = Column(JSONB)
     properties = Column(JSONB)
-    created_at = Column(DateTimeISOFormat, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTimeISOFormat, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
-    # Relationships
     stories = relationship("Story", back_populates="thing", cascade="all, delete-orphan")
     relationships = relationship("Relationship", back_populates="thing", cascade="all, delete-orphan")
 
@@ -40,8 +29,8 @@ class Thing(Base):
             'name': self.name,
             'manufacturer': self.manufacturer,
             'properties': self.properties,
-            'created_at': self.created_at,  # Now handled by DateTimeISOFormat
-            'updated_at': self.updated_at   # Now handled by DateTimeISOFormat
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
 class Story(Base):
@@ -52,7 +41,7 @@ class Story(Base):
     version = Column(JSONB, nullable=False)
     type = Column(String, nullable=False)
     procedure = Column(JSONB, nullable=False)
-    created_at = Column(DateTimeISOFormat, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     thing = relationship("Thing", back_populates="stories")
 
@@ -64,7 +53,7 @@ class Story(Base):
             'version': self.version,
             'type': self.type,
             'procedure': self.procedure,
-            'created_at': self.created_at  # Now handled by DateTimeISOFormat
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
 class Relationship(Base):
@@ -75,7 +64,7 @@ class Relationship(Base):
     relationship_type = Column(String, nullable=False)
     target_uri = Column(String, nullable=False)
     relation_metadata = Column(JSONB)
-    created_at = Column(DateTimeISOFormat, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     thing = relationship("Thing", back_populates="relationships")
 
@@ -87,5 +76,5 @@ class Relationship(Base):
             'relationship_type': self.relationship_type,
             'target_uri': self.target_uri,
             'relation_metadata': self.relation_metadata,
-            'created_at': self.created_at  # Now handled by DateTimeISOFormat
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }

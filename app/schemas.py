@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from typing import Optional, Dict, List, Any
 from datetime import datetime
 from enum import Enum
@@ -20,7 +20,7 @@ class Manufacturer(BaseModel):
 class Properties(BaseModel):
     dimensions: Optional[Dict[str, float]] = None
     materials: List[str] = Field(default_factory=list)
-    manufacturing_date: Optional[datetime] = None
+    manufacturing_date: Optional[str] = None  # Changed from datetime to str
     serial_number: Optional[str] = None
 
 class ThingCreate(BaseModel):
@@ -28,12 +28,16 @@ class ThingCreate(BaseModel):
     name: MultilingualText
     manufacturer: Manufacturer
     properties: Optional[Properties] = None
+    
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
 
 class ThingResponse(ThingCreate):
     id: str
     uri: str
-    created_at: datetime
-    updated_at: Optional[datetime] = None
+    created_at: str  # Changed from datetime to str
+    updated_at: Optional[str] = None  # Changed from datetime to str
+
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
 
 class StoryStep(BaseModel):
     order: int
@@ -47,10 +51,14 @@ class StoryCreate(BaseModel):
     type: str
     procedure: List[StoryStep]
 
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+
 class StoryResponse(StoryCreate):
     id: str
     version: Dict[str, Any]
-    created_at: datetime
+    created_at: str  # Changed from datetime to str
+
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
 
 class RelationshipCreate(BaseModel):
     thing_id: str
@@ -58,9 +66,13 @@ class RelationshipCreate(BaseModel):
     target_uri: str
     relation_metadata: Optional[Dict[str, Any]] = None
 
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+
 class RelationshipResponse(RelationshipCreate):
     id: str
-    created_at: datetime
+    created_at: str  # Changed from datetime to str
+
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
 
 class HealthMetrics(BaseModel):
     memory_usage: float
@@ -75,3 +87,5 @@ class HealthResponse(BaseModel):
     version: str
     components: Dict[str, ComponentStatus]
     metrics: HealthMetrics
+
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})

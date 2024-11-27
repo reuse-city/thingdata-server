@@ -85,10 +85,10 @@ async def root():
             
             <h2>Available Endpoints</h2>
             <ul>
-                <li><code>/docs</code> - Interactive API documentation</li>
-                <li><code>/health</code> - System health check</li>
-                <li><code>/api/v1/things</code> - Thing management</li>
-                <li><code>/api/v1/stories</code> - Story management</li>
+                <li><code><a href="docs" title="docs">/docs</a></code> - Interactive API documentation</li>
+                <li><code><a href="health" title="health">/health</a></code> - System health check</li>
+                <li><code><a href="api/v1/things" title="things">/api/v1/things</a></code> - Thing management</li>
+                <li><code><a href="api/v1/stories" title="stories">/api/v1/stories</a></code> - Story management</li>
             </ul>
             
             <div class="footer">
@@ -118,14 +118,16 @@ async def health_check():
 async def create_thing(thing: ThingCreate, db: Session = Depends(get_db)):
     """Create a new thing."""
     try:
+        # Convert the Pydantic model to dict explicitly
+        thing_data = thing.model_dump(mode='json')
+
         db_thing = Thing(
             id=str(uuid.uuid4()),
-            uri=f"thing:{thing.type}/{thing.manufacturer.name}/{thing.name.default}",
-            type=thing.type,
-            name=thing.name.dict(),
-            manufacturer=thing.manufacturer.dict(),
-            properties=thing.properties.dict() if thing.properties else {},
-            created_at=datetime.utcnow()
+            uri=f"thing:{thing_data['type']}/{thing_data['manufacturer']['name']}/{thing_data['name']['default']}",
+            type=thing_data['type'],
+            name=thing_data['name'],
+            manufacturer=thing_data['manufacturer'],
+            properties=thing_data.get('properties', {})
         )
         
         db.add(db_thing)
@@ -192,6 +194,16 @@ async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
         logger.error(f"Failed to create story: {str(e)}")
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/stories", response_model=List[StoryResponse])
+async def list_stories(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List all stories with optional pagination."""
+    stories = db.query(Story).offset(skip).limit(limit).all()
+    return [story.to_dict() for story in stories]
 
 @app.get("/api/v1/stories/{story_id}", response_model=StoryResponse)
 async def get_story(story_id: str, db: Session = Depends(get_db)):
