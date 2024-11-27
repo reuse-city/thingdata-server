@@ -11,7 +11,7 @@ docker compose down -v
 # Clean up old files
 echo "Cleaning up old files..."
 rm -rf migrations
-rm -f alembic.ini
+rm -rf alembic.ini
 rm -rf logs/*
 rm -rf app/__pycache__
 rm -rf app/**/__pycache__
