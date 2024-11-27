@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
@@ -16,16 +16,19 @@ from app.schemas import (
     RelationshipCreate, RelationshipResponse,
     HealthResponse, ComponentStatus
 )
+from app.health import HealthChecker
 from app.logger import setup_logger
 
 logger = setup_logger(__name__)
 
-# Initialize FastAPI app
+# Initialize FastAPI app and health checker
 app = FastAPI(
     title="ThingData Server",
     description="ThingData Protocol v1.0 Implementation",
     version="0.1.0"
 )
+
+health_checker = HealthChecker()
 
 # CORS configuration
 app.add_middleware(
@@ -42,10 +45,59 @@ static_dir = app_dir / "static"
 static_dir.mkdir(exist_ok=True)
 favicon_path = static_dir / "favicon.ico"
 
-if not favicon_path.exists():
-    import base64
-    favicon_data = "AAABAAEAEBAQAAAAAAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA"
-    favicon_path.write_bytes(base64.b64decode(favicon_data))
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    """Root endpoint with API information."""
+    return """
+    <html>
+        <head>
+            <title>ThingData Server</title>
+            <style>
+                body { 
+                    font-family: Arial, sans-serif; 
+                    max-width: 800px; 
+                    margin: 40px auto; 
+                    padding: 0 20px;
+                    line-height: 1.6;
+                    color: #333;
+                }
+                code { 
+                    background: #f4f4f4; 
+                    padding: 2px 5px; 
+                    border-radius: 3px; 
+                }
+                .footer {
+                    margin-top: 40px;
+                    padding-top: 20px;
+                    border-top: 1px solid #eee;
+                    font-size: 0.9em;
+                    color: #666;
+                }
+                h1 { color: #2c3e50; }
+                h2 { color: #34495e; margin-top: 30px; }
+                ul { padding-left: 20px; }
+                li { margin: 10px 0; }
+            </style>
+        </head>
+        <body>
+            <h1>ThingData Server</h1>
+            <p>Welcome to ThingData Server, an open protocol for sharing repair knowledge across communities worldwide.</p>
+            
+            <h2>Available Endpoints</h2>
+            <ul>
+                <li><code>/docs</code> - Interactive API documentation</li>
+                <li><code>/health</code> - System health check</li>
+                <li><code>/api/v1/things</code> - Thing management</li>
+                <li><code>/api/v1/stories</code> - Story management</li>
+            </ul>
+            
+            <div class="footer">
+                <p>ThingData is an open-source project promoting sustainable practices and the right to repair.</p>
+                <p>Version 0.1.0</p>
+            </div>
+        </body>
+    </html>
+    """
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -57,36 +109,10 @@ async def get_favicon():
     """Serve favicon."""
     return FileResponse(favicon_path)
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Comprehensive health check endpoint."""
-    try:
-        # Check database
-        db = next(get_db())
-        db.execute("SELECT 1")
-        db_status = ComponentStatus.HEALTHY
-    except Exception as e:
-        logger.error(f"Database health check failed: {str(e)}")
-        db_status = ComponentStatus.UNHEALTHY
-
-    # System metrics
-    memory = psutil.virtual_memory()
-    cpu_percent = psutil.cpu_percent()
-
-    return {
-        "status": "healthy" if db_status == ComponentStatus.HEALTHY else "unhealthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "version": "0.1.0",
-        "components": {
-            "database": db_status,
-            "api": ComponentStatus.HEALTHY
-        },
-        "metrics": {
-            "memory_usage": memory.percent,
-            "cpu_usage": cpu_percent,
-            "active_connections": 0
-        }
-    }
+    return await health_checker.check_health()
 
 @app.post("/api/v1/things", response_model=ThingResponse)
 async def create_thing(thing: ThingCreate, db: Session = Depends(get_db)):

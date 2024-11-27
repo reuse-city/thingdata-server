@@ -78,20 +78,24 @@ class HealthChecker:
         try:
             db = next(get_db())
             
-            # Basic connectivity check
+            # Basic connectivity check using text()
             db.execute(text("SELECT 1"))
             
-            # Check connection pool
-            pool_info = db.execute(text("""
-                SELECT count(*) as connections
-                FROM pg_stat_activity
-                WHERE datname = current_database()
-            """)).scalar()
+            # Check connection pool using text()
+            pool_info = db.execute(
+                text("""
+                    SELECT count(*) as connections
+                    FROM pg_stat_activity
+                    WHERE datname = current_database()
+                """)
+            ).scalar()
             
-            # Check database size
-            db_size = db.execute(text("""
-                SELECT pg_database_size(current_database())
-            """)).scalar()
+            # Check database size using text()
+            db_size = db.execute(
+                text("""
+                    SELECT pg_database_size(current_database())
+                """)
+            ).scalar()
             
             if pool_info > 100 or db_size > 10_000_000_000:  # 10GB
                 return ComponentStatus.DEGRADED
@@ -156,7 +160,9 @@ class HealthChecker:
             return HealthMetrics(
                 memory_usage=0,
                 cpu_usage=0,
-                active_connections=0
+                active_connections=0,
+                storage_usage=0,
+                federation_peers=0
             )
 
     def _determine_overall_status(self, component_statuses: Dict[str, ComponentStatus]) -> str:
