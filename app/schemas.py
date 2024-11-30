@@ -46,8 +46,46 @@ class StoryStep(BaseModel):
     tools: List[str] = Field(default_factory=list)
     media: List[str] = Field(default_factory=list)
 
+class ThingCategory(BaseModel):
+    category: str
+    subcategory: Optional[str] = None
+    attributes: Optional[Dict[str, Any]] = None
+
+class GuideType(BaseModel):
+    primary: str = Field(..., description="Primary type (manual, tutorial, specification, documentation)")
+    secondary: Optional[str] = Field(None, description="Secondary classification (repair, maintenance, transformation, safety)")
+
+class GuideContent(BaseModel):
+    title: MultilingualText
+    summary: Optional[MultilingualText] = None
+    requirements: Optional[Dict[str, List[str]]] = Field(
+        None,
+        description="Required skills, tools, materials, certifications"
+    )
+    warnings: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Safety warnings with severity levels"
+    )
+    procedure: Optional[List[Dict[str, Any]]] = None
+
+class GuideCreate(BaseModel):
+    thing_id: Optional[str] = None
+    thing_category: Optional[ThingCategory] = None
+    type: GuideType
+    content: GuideContent
+
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+
+class GuideResponse(GuideCreate):
+    id: str
+    created_at: str
+    updated_at: Optional[str] = None
+
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+
 class StoryCreate(BaseModel):
-    thing_id: str
+    thing_id: Optional[str] = None
+    thing_category: Optional[ThingCategory] = None
     type: str
     procedure: List[StoryStep]
 
@@ -56,7 +94,8 @@ class StoryCreate(BaseModel):
 class StoryResponse(StoryCreate):
     id: str
     version: Dict[str, Any]
-    created_at: str  # Changed from datetime to str
+    created_at: str
+    updated_at: Optional[str] = None
 
     model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
 

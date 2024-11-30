@@ -44,15 +44,27 @@ def create_relationship(source_id, target_id, rel_type, metadata=None):
         logger.error(f"Failed to create relationship: {response.text}")
         raise Exception(f"Failed to create relationship: {response.text}")
 
-def create_story(thing_id, data):
-    """Create a repair story for a thing."""
-    data["thing_id"] = thing_id
+def create_story(data):
+    """Create a repair story."""
     response = requests.post(f"{BASE_URL}/api/v1/stories", json=data)
     if response.status_code == 200:
-        logger.info(f"Created story for thing {thing_id}")
+        story_id = response.json()["id"]
+        logger.info(f"Created story {story_id}")
+        return story_id
     else:
         logger.error(f"Failed to create story: {response.text}")
         raise Exception(f"Failed to create story: {response.text}")
+
+def create_guide(data):
+    """Create a guide and return its ID."""
+    response = requests.post(f"{BASE_URL}/api/v1/guides", json=data)
+    if response.status_code == 200:
+        guide_id = response.json()["id"]
+        logger.info(f"Created guide: {data['content']['title']['default']} (ID: {guide_id})")
+        return guide_id
+    else:
+        logger.error(f"Failed to create guide: {response.text}")
+        raise Exception(f"Failed to create guide: {response.text}")
 
 def main():
     # 1. Create Laptop
@@ -135,118 +147,90 @@ def main():
         {"position": "lid", "removable": True}
     )
 
-    create_relationship(
-        battery_id,
-        display_id,
-        "powers",
-        {"voltage": "15.4V"}
-    )
+    # 4. Create general laptop hinge repair guide
+    laptop_guide = {
+        "thing_category": {
+            "category": "laptop",
+            "subcategory": "notebook",
+            "attributes": {
+                "form_factor": "clamshell",
+                "size_range": "13-15 inch"
+            }
+        },
+        "type": {
+            "primary": "guide",
+            "secondary": "repair"
+        },
+        "content": {
+            "title": {
+                "default": "General Laptop Hinge Repair Guide"
+            },
+            "summary": {
+                "default": "How to diagnose and repair common laptop hinge issues"
+            },
+            "requirements": {
+                "skills": ["Basic electronics", "Screwdriver usage"],
+                "tools": ["Screwdriver set", "Plastic pry tools"],
+                "materials": ["Replacement hinges", "Screws"],
+                "certifications": []
+            },
+            "warnings": [
+                {
+                    "severity": "CAUTION",
+                    "message": {
+                        "default": "Disconnect battery before starting"
+                    }
+                }
+            ],
+            "procedure": [
+                {
+                    "order": 1,
+                    "title": {"default": "Preparation"},
+                    "description": {"default": "Backup data and gather tools"}
+                },
+                {
+                    "order": 2,
+                    "title": {"default": "Disassembly"},
+                    "description": {"default": "Remove screws and separate components"}
+                }
+            ]
+        }
+    }
+    create_guide(laptop_guide)
 
-    # Create stories
-    # 1. Battery Replacement Story
-    battery_story = {
-        "type": "repair",
+    # 5. Create fridge door upcycling story
+    fridge_story = {
+        "thing_category": {
+            "category": "appliance",
+            "subcategory": "refrigerator",
+            "attributes": {
+                "component": "door",
+                "material": "metal"
+            }
+        },
+        "type": "modification",
         "procedure": [
             {
                 "order": 1,
                 "description": {
-                    "default": "Turn off laptop and disconnect power"
+                    "default": "Clean and prepare the door surface"
                 },
-                "warnings": ["Ensure laptop is powered off"],
-                "tools": ["none"],
+                "warnings": ["Use appropriate safety equipment"],
+                "tools": ["Cleaning supplies", "Sandpaper"],
                 "media": []
             },
             {
                 "order": 2,
                 "description": {
-                    "default": "Flip laptop over and unscrew battery cover"
+                    "default": "Apply magnetic primer"
                 },
-                "warnings": ["Use correct size screwdriver"],
-                "tools": ["Phillips screwdriver"],
-                "media": []
-            },
-            {
-                "order": 3,
-                "description": {
-                    "default": "Lift old battery out and insert new one"
-                },
-                "warnings": ["Handle battery with care"],
-                "tools": ["none"],
+                "warnings": ["Work in ventilated area"],
+                "tools": ["Paint roller", "Primer"],
                 "media": []
             }
         ]
     }
-    create_story(laptop_id, battery_story)
-
-    # 2. Display Repair Story
-    display_story = {
-        "type": "repair",
-        "procedure": [
-            {
-                "order": 1,
-                "description": {
-                    "default": "Remove display bezel"
-                },
-                "warnings": ["Work on clean surface"],
-                "tools": ["plastic pry tool"],
-                "media": []
-            },
-            {
-                "order": 2,
-                "description": {
-                    "default": "Disconnect display cable"
-                },
-                "warnings": ["Handle connectors gently"],
-                "tools": ["tweezers"],
-                "media": []
-            },
-            {
-                "order": 3,
-                "description": {
-                    "default": "Replace display panel"
-                },
-                "warnings": ["Align properly before securing"],
-                "tools": ["screwdriver"],
-                "media": []
-            }
-        ]
-    }
-    create_story(display_id, display_story)
-
-    # 3. Laptop Maintenance Story
-    laptop_story = {
-        "type": "maintenance",
-        "procedure": [
-            {
-                "order": 1,
-                "description": {
-                    "default": "Clean cooling system"
-                },
-                "warnings": ["Do not use compressed air"],
-                "tools": ["brush", "vacuum"],
-                "media": []
-            },
-            {
-                "order": 2,
-                "description": {
-                    "default": "Check all port modules"
-                },
-                "warnings": ["Handle modules carefully"],
-                "tools": ["none"],
-                "media": []
-            },
-            {
-                "order": 3,
-                "description": {
-                    "default": "Update firmware"
-                },
-                "warnings": ["Do not interrupt process"],
-                "tools": ["none"],
-                "media": []
-            }
-        ]
-    }
-    create_story(laptop_id, laptop_story)
+    create_story(fridge_story)
 
 if __name__ == "__main__":
     main()

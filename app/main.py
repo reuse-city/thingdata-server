@@ -10,10 +10,11 @@ from pathlib import Path
 from app.version import VERSION
 
 from app.database import get_db, init_db
-from app.models import Thing, Story, Relationship
+from app.models import Thing, Story, Guide, Relationship
 from app.schemas import (
     ThingCreate, ThingResponse,
     StoryCreate, StoryResponse,
+    GuideCreate, GuideResponse,
     RelationshipCreate, RelationshipResponse,
     HealthResponse, ComponentStatus
 )
@@ -91,11 +92,12 @@ async def root():
                 <li><code><a href="health" title="health">/health</a></code> - System health check</li>
                 <li><code><a href="api/v1/things" title="things">/api/v1/things</a></code> - Thing management</li>
                 <li><code><a href="api/v1/stories" title="stories">/api/v1/stories</a></code> - Story management</li>
+                <li><code><a href="api/v1/guides" title="guides">/api/v1/guides</a></code> - Guide management</li>
             </ul>
             
             <div class="footer">
                 <p>ThingData is an open-source project promoting sustainable practices and the right to repair.</p>
-                <p>Version 0.1.0</p>
+                <p>Version {VERSION}</p>
             </div>
         </body>
     </html>
@@ -169,31 +171,32 @@ async def list_things(
 async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
     """Create a new repair story."""
     try:
-        # Verify thing exists
-        thing = db.query(Thing).filter(Thing.id == story.thing_id).first()
-        if not thing:
-            raise HTTPException(status_code=404, detail=f"Thing {story.thing_id} not found")
+        # Verify thing exists if thing_id is provided
+        if story.thing_id:
+            thing = db.query(Thing).filter(Thing.id == story.thing_id).first()
+            if not thing:
+                raise HTTPException(status_code=404, detail=f"Thing {story.thing_id} not found")
 
-        # Convert procedure steps to list of dicts
         procedure_list = [step.model_dump() for step in story.procedure]
         
         story_db = Story(
             id=str(uuid.uuid4()),
             thing_id=story.thing_id,
-            type=story.type,
+            thing_category=story.thing_category.model_dump() if story.thing_category else None,
             version={
                 "number": "1.0.0",
                 "date": datetime.utcnow().isoformat(),
                 "history": []
             },
-            procedure=procedure_list  # Now using the converted list
+            type=story.type,
+            procedure=procedure_list
         )
         
         db.add(story_db)
         db.commit()
         db.refresh(story_db)
         
-        logger.info(f"Created story {story_db.id} for thing {story.thing_id}")
+        logger.info(f"Created story {story_db.id}")
         return story_db.to_dict()
     except Exception as e:
         logger.error(f"Failed to create story: {str(e)}")
@@ -262,6 +265,63 @@ async def create_relationship(relationship: RelationshipCreate, db: Session = De
         logger.error(f"Failed to create relationship: {str(e)}")
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/guides", response_model=GuideResponse)
+async def create_guide(guide: GuideCreate, db: Session = Depends(get_db)):
+    """Create a new guide."""
+    try:
+        # Verify thing exists if thing_id is provided
+        if guide.thing_id:
+            thing = db.query(Thing).filter(Thing.id == guide.thing_id).first()
+            if not thing:
+                raise HTTPException(status_code=404, detail=f"Thing {guide.thing_id} not found")
+
+        guide_db = Guide(
+            id=str(uuid.uuid4()),
+            thing_id=guide.thing_id,
+            thing_category=guide.thing_category.model_dump() if guide.thing_category else None,
+            type=guide.type.model_dump(),
+            content=guide.content.model_dump()
+        )
+        
+        db.add(guide_db)
+        db.commit()
+        db.refresh(guide_db)
+        
+        logger.info(f"Created guide: {guide_db.id}")
+        return guide_db.to_dict()
+    except Exception as e:
+        logger.error(f"Failed to create guide: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/guides", response_model=List[GuideResponse])
+async def list_guides(
+    skip: int = 0,
+    limit: int = 100,
+    thing_id: Optional[str] = None,
+    category: Optional[str] = None,
+    type: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """List all guides with optional filtering."""
+    query = db.query(Guide)
+    if thing_id:
+        query = query.filter(Guide.thing_id == thing_id)
+    if category:
+        query = query.filter(Guide.thing_category['category'].astext == category)
+    if type:
+        query = query.filter(Guide.type['primary'].astext == type)
+    guides = query.offset(skip).limit(limit).all()
+    return [guide.to_dict() for guide in guides]
+
+@app.get("/api/v1/guides/{guide_id}", response_model=GuideResponse)
+async def get_guide(guide_id: str, db: Session = Depends(get_db)):
+    """Get a specific guide."""
+    guide = db.query(Guide).filter(Guide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Guide not found")
+    return guide.to_dict()
 
 if __name__ == "__main__":
     import uvicorn

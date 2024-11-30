@@ -3,7 +3,6 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB
 from app.database import Base
-import json
 
 class Thing(Base):
     __tablename__ = "things"
@@ -18,10 +17,10 @@ class Thing(Base):
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
     stories = relationship("Story", back_populates="thing", cascade="all, delete-orphan")
+    guides = relationship("Guide", back_populates="thing", cascade="all, delete-orphan")
     relationships = relationship("Relationship", back_populates="thing", cascade="all, delete-orphan")
 
     def to_dict(self):
-        """Convert model to dictionary."""
         return {
             'id': self.id,
             'uri': self.uri,
@@ -37,23 +36,50 @@ class Story(Base):
     __tablename__ = "stories"
 
     id = Column(String, primary_key=True)
-    thing_id = Column(String, ForeignKey("things.id"))
+    thing_id = Column(String, ForeignKey("things.id"), nullable=True)  # Made nullable
+    thing_category = Column(JSONB, nullable=True)  # Added category
     version = Column(JSONB, nullable=False)
     type = Column(String, nullable=False)
     procedure = Column(JSONB, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)  # Added updated_at
 
     thing = relationship("Thing", back_populates="stories")
 
     def to_dict(self):
-        """Convert model to dictionary."""
         return {
             'id': self.id,
             'thing_id': self.thing_id,
+            'thing_category': self.thing_category,
             'version': self.version,
             'type': self.type,
             'procedure': self.procedure,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+class Guide(Base):
+    __tablename__ = "guides"
+
+    id = Column(String, primary_key=True)
+    thing_id = Column(String, ForeignKey("things.id"), nullable=True)
+    thing_category = Column(JSONB, nullable=True)
+    type = Column(JSONB, nullable=False)
+    content = Column(JSONB, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+
+    thing = relationship("Thing", back_populates="guides")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'thing_id': self.thing_id,
+            'thing_category': self.thing_category,
+            'type': self.type,
+            'content': self.content,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
 class Relationship(Base):
@@ -69,7 +95,6 @@ class Relationship(Base):
     thing = relationship("Thing", back_populates="relationships")
 
     def to_dict(self):
-        """Convert model to dictionary."""
         return {
             'id': self.id,
             'thing_id': self.thing_id,
