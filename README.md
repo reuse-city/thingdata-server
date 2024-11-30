@@ -2,6 +2,8 @@
 
 ThingData is a data-powered solution to promote a longer lifetime for goods and materials. This repository contains the reference implementation of the ThingData Protocol server.
 
+**Attention:** good part of the code and documentation in this repository were created with the assistance of chatbots and large language models. If something looks weird, let us know.
+
 ## Features
 
 ### Currently Implemented (v0.1.2)
