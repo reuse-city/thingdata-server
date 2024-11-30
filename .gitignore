@@ -33,6 +33,10 @@ env/
 .project
 .pydevproject
 
+# Data persistence
+postgres_data/
+backups
+
 # Logs
 logs/
 *.log

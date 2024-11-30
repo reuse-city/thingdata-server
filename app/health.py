@@ -29,7 +29,7 @@ class HealthChecker:
             health_response = HealthResponse(
                 status="healthy" if db_status == ComponentStatus.HEALTHY else "unhealthy",
                 timestamp=datetime.utcnow().isoformat(),
-                version="0.1.0",
+                version="0.1.2",
                 components={
                     "database": db_status,
                     "api": ComponentStatus.HEALTHY

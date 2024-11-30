@@ -4,7 +4,13 @@ ThingData is a data-powered solution to promote a longer lifetime for goods and 
 
 ## Features
 
-### Currently Implemented (v0.1.0)
+### Currently Implemented (v0.1.2)
+- Persistent data storage
+- Environment-based configuration
+- Database backup capabilities
+- Improved logging system
+
+### Currently Implemented (v0.1.1)
 - Basic CRUD operations for Things (products, objects, materials)
 - Basic CRUD operations for Repair Stories
 - Basic CRUD operations for Relationships between Things
@@ -34,7 +40,13 @@ git clone git@github.com:reuse-city/thingdata-server.git
 cd thingdata-server
 ```
 
-2. Start the server:
+2. Configure environment:
+```bash
+cp .env.example .env
+# Edit .env with your settings
+```
+
+3. Start the server:
 ```bash
 docker-compose up --build
 ```
@@ -43,6 +55,65 @@ The server will be available at:
 - API: http://localhost:8000
 - Documentation: http://localhost:8000/docs
 - Alternative documentation: http://localhost:8000/redoc
+
+4. Verify installation:
+```bash
+curl http://localhost:8000/health
+```
+
+## Next Steps Recommended
+
+1. Implement automatic backups:
+   - Set up cron jobs for regular backups
+   - Implement backup rotation
+   - Add backup verification
+
+2. Add monitoring:
+   - Track storage usage
+   - Monitor database performance
+   - Set up alerts for storage issues
+
+3. Implement data migration tools:
+   - Create database schema migrations
+   - Add data export/import tools
+   - Implement version tracking
+
+4. Enhance backup strategy:
+   - Add compression
+   - Implement point-in-time recovery
+   - Add remote backup storage
+
+## Migration Path
+
+1. For existing installations:
+```bash
+# Stop services
+docker-compose down
+
+# Backup current data
+docker exec -t thingdata-db pg_dumpall -c -U thingdata > dump.sql
+
+# Remove old volumes
+docker volume rm thingdata_postgres_data
+
+# Start with new configuration
+docker-compose up -d
+
+# Restore data if needed
+cat dump.sql | docker exec -i thingdata-db psql -U thingdata
+```
+
+2. For new installations:
+```bash
+# Clone repository
+git clone https://github.com/reuse-city/thingdata-server.git
+
+# Configure environment
+cp .env.example .env
+
+# Start services
+docker-compose up -d
+```
 
 ## API Documentation
 

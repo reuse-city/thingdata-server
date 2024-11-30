@@ -7,7 +7,8 @@ import uuid
 from datetime import datetime
 import psutil
 from pathlib import Path
-
+from app.config import get_settings
+settings = get_settings()
 from app.database import get_db, init_db
 from app.models import Thing, Story, Relationship
 from app.schemas import (
@@ -19,13 +20,13 @@ from app.schemas import (
 from app.health import HealthChecker
 from app.logger import setup_logger
 
-logger = setup_logger(__name__)
+logger = setup_logger(__name__, settings.LOG_LEVEL)
 
 # Initialize FastAPI app and health checker
 app = FastAPI(
     title="ThingData Server",
     description="ThingData Protocol v1.0 Implementation",
-    version="0.1.0"
+    version="0.1.2"
 )
 
 health_checker = HealthChecker()

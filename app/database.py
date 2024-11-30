@@ -1,19 +1,19 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
+from app.config import get_settings
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://thingdata:thingdata@db/thingdata")
+settings = get_settings()
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,  # Added connection health check
+    pool_size=5,         # Connection pool settings
+    max_overflow=10
+)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-
-def init_db():
-    """Initialize database schema"""
-    # Import models here to avoid circular imports
-    from app.models import Thing, Story, Relationship
-    Base.metadata.create_all(bind=engine)
 
 def get_db():
     db = SessionLocal()
@@ -21,3 +21,6 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def init_db():
+    Base.metadata.create_all(bind=engine)

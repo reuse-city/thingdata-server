@@ -17,3 +17,7 @@ python-json-logger==2.0.7
 
 # Date handling
 python-dateutil==2.8.2
+
+# Persistent storage
+pydantic-settings==2.1.0
+python-dotenv==1.0.0

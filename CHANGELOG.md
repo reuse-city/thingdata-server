@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Changelog
+
+## [0.1.2] - 2024-11-30
+
+### Added
+- Environment configuration example file (.env.example)
+- Persistent database storage using named volumes
+- Centralized configuration management with config.py
+- Database initialization scripts
+- Environment-based configuration
+- Backup script for database
+- Logs persistence
+
+### Changed
+- Moved from development to production environment settings
+- Updated database connection pooling settings
+- Improved logging configuration
+- Simplified Docker configuration
+- Consolidated environment configuration
+
+### Removed
+- Obsolete development and test Docker compose files
+- Unused development tools
+- Legacy storage implementation
+- Development-specific configuration files
+- Redundant initialization files
+
+### Fixed
+- Data persistence across container rebuilds
+- Database connection management
+- Environment configuration handling
+- Logging persistence
+
 ## [0.1.1] - 2024-11-27
 
 ### Added

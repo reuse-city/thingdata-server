@@ -7,17 +7,14 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://thingdata:thingdata@db:5432/thingdata
-      - ENVIRONMENT=development
-      - LOG_LEVEL=DEBUG
-      - PYTHONPATH=/app
+      - ENVIRONMENT=production  # Changed from development
+      - LOG_LEVEL=INFO         # Changed from DEBUG
+    volumes:
+      - ./app:/app/app
+      - ./logs:/app/logs       # Added logs persistence
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./app:/app/app
-      - ./migrations:/app/migrations
-      - ./alembic.ini:/app/alembic.ini
-    working_dir: /app
 
   db:
     image: postgres:15-alpine
@@ -27,8 +24,7 @@ services:
       - POSTGRES_DB=thingdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - ./init-scripts:/docker-entrypoint-initdb.d  # Added initialization scripts
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U thingdata"]
       interval: 5s
@@ -37,3 +33,4 @@ services:
 
 volumes:
   postgres_data:
+    name: thingdata_postgres_data  # Named volume for easier management

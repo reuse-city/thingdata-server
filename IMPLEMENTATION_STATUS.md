@@ -4,6 +4,10 @@
 
 ### Working Features
 
+- Persistent database storage
+- Environment-based configuration
+- Backup capabilities
+- Improved logging system
 - Basic FastAPI setup with complete core endpoints and datetime handling
 - PostgreSQL database connection with proper datetime handling
 - Basic models (Thing, Story, Relationship) with JSONB columns
@@ -17,6 +21,10 @@
 - Basic error handling and logging
 
 ### Recent Changes
+- Implemented persistent storage
+- Added database initialization scripts
+- Improved configuration management
+- Added backup capabilities
 - Added proper datetime serialization
 - Fixed Story creation procedure handling
 - Implemented Relationship creation
@@ -40,12 +48,6 @@
    - Story endpoints need implementation
    - Missing search endpoints
    - Missing batch operations
-
-3. Development Environment
-   - Basic Docker setup working
-   - Need better development workflow
-   - Need automated testing setup
-   - Need proper cleanup procedures
 
 ### Missing Features
 1. Core Functionality

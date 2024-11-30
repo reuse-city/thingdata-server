@@ -15,7 +15,7 @@ Returns:
 {
   "status": "healthy|degraded|unhealthy",
   "timestamp": "2024-11-27T00:00:00Z",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "components": {
     "database": "healthy|degraded|unhealthy",
     "api": "healthy|degraded|unhealthy"
