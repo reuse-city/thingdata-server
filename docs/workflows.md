@@ -278,5 +278,31 @@ curl -X POST http://localhost:8000/api/v1/relationships \
 }'
 ```
 
+### 3. Development Workflows
+
+### Initial Setup
+
+1. Start the server:
+```bash
+docker-compose up -d
+```
+
+2. Add sample data (optional):
+```bash
+./scripts/init_sample_data.sh
+```
+
+This creates:
+- Framework laptop (main device)
+- Battery component
+- Display component
+- Relationships between components
+- Repair and maintenance stories
+
+Perfect for:
+- API exploration
+- Integration testing
+- UI development
+
 ## Federation Workflows
 For detailed federation examples and workflows, see the [Federation Protocol Documentation](api/federation.md).

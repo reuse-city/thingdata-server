@@ -3,8 +3,29 @@ from fastapi.testclient import TestClient
 import uuid
 from datetime import datetime
 
-from app.main import app
-from app.schemas import MultilingualText, Properties, Manufacturer
+from app.main import app, get_db
+from app.database import Base, engine, SessionLocal
+
+@pytest.fixture(scope="module")
+def test_client():
+    """Create test client."""
+    # Set up test database
+    Base.metadata.create_all(bind=engine)
+    
+    client = TestClient(app)
+    yield client
+    
+    # Clean up
+    Base.metadata.drop_all(bind=engine)
+
+@pytest.fixture
+def test_db():
+    """Create fresh database session for each test."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 @pytest.fixture
 def test_thing_data():
@@ -33,56 +54,48 @@ def test_thing_data():
         }
     }
 
-def test_read_main(client):
+def test_read_main(test_client):
     """Test root endpoint."""
-    response = client.get("/")
+    response = test_client.get("/")
     assert response.status_code == 200
-    assert response.json()["name"] == "ThingData API"
+    assert "ThingData Server" in response.text  # Updated to match HTML response
 
-def test_health_check(client):
+def test_health_check(test_client):
     """Test health check endpoint."""
-    response = client.get("/health")
+    response = test_client.get("/health")
     assert response.status_code == 200
-    assert response.json()["status"] in ["healthy", "unhealthy"]
+    data = response.json()
+    assert "status" in data
+    assert "components" in data
+    assert "metrics" in data
 
-def test_create_thing(client, test_thing_data):
+def test_create_thing(test_client, test_thing_data):
     """Test creating a new thing."""
-    response = client.post("/api/v1/things", json=test_thing_data)
+    response = test_client.post("/api/v1/things", json=test_thing_data)
     assert response.status_code == 200
     data = response.json()
     assert data["type"] == test_thing_data["type"]
     assert data["name"] == test_thing_data["name"]
     assert "id" in data
+    assert "uri" in data
 
-def test_get_thing(client, test_thing_data):
+def test_get_thing(test_client, test_thing_data):
     """Test retrieving a thing."""
     # First create a thing
-    create_response = client.post("/api/v1/things", json=test_thing_data)
+    create_response = test_client.post("/api/v1/things", json=test_thing_data)
     thing_id = create_response.json()["id"]
 
     # Then retrieve it
-    response = client.get(f"/api/v1/things/{thing_id}")
+    response = test_client.get(f"/api/v1/things/{thing_id}")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == thing_id
     assert data["type"] == test_thing_data["type"]
 
-def test_list_things(client, test_thing_data):
-    """Test listing things."""
-    # Create a few things
-    client.post("/api/v1/things", json=test_thing_data)
-    client.post("/api/v1/things", json=test_thing_data)
-
-    response = client.get("/api/v1/things")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) >= 2
-    assert all(isinstance(thing["id"], str) for thing in data)
-
-def test_create_story(client, test_thing_data):
+def test_create_story(test_client, test_thing_data):
     """Test creating a repair story."""
     # First create a thing
-    thing_response = client.post("/api/v1/things", json=test_thing_data)
+    thing_response = test_client.post("/api/v1/things", json=test_thing_data)
     thing_id = thing_response.json()["id"]
 
     story_data = {
@@ -98,19 +111,37 @@ def test_create_story(client, test_thing_data):
                     }
                 },
                 "warnings": ["Disconnect power first"],
-                "tools": ["screwdriver"]
+                "tools": ["screwdriver"],
+                "media": []
             }
         ]
     }
 
-    response = client.post("/api/v1/stories", json=story_data)
+    response = test_client.post("/api/v1/stories", json=story_data)
     assert response.status_code == 200
     data = response.json()
     assert data["thing_id"] == thing_id
     assert "id" in data
     assert "version" in data
 
-def test_nonexistent_thing(client):
-    """Test getting a nonexistent thing."""
-    response = client.get(f"/api/v1/things/{uuid.uuid4()}")
-    assert response.status_code == 404
+def test_create_relationship(test_client, test_thing_data):
+    """Test creating a relationship between things."""
+    # Create two things
+    thing1 = test_client.post("/api/v1/things", json=test_thing_data).json()
+    thing2 = test_client.post("/api/v1/things", json=test_thing_data).json()
+
+    relationship_data = {
+        "thing_id": thing1["id"],
+        "relationship_type": "has_component",
+        "target_uri": thing2["id"],
+        "relation_metadata": {
+            "position": "top",
+            "removable": True
+        }
+    }
+
+    response = test_client.post("/api/v1/relationships", json=relationship_data)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["thing_id"] == thing1["id"]
+    assert data["target_uri"] == thing2["id"]

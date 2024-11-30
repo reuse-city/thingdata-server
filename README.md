@@ -9,6 +9,8 @@ ThingData is a data-powered solution to promote a longer lifetime for goods and 
 - Environment-based configuration
 - Database backup capabilities
 - Improved logging system
+- Sample data generation
+- Test infrastructure
 
 ### Currently Implemented (v0.1.1)
 - Basic CRUD operations for Things (products, objects, materials)
@@ -16,7 +18,7 @@ ThingData is a data-powered solution to promote a longer lifetime for goods and 
 - Basic CRUD operations for Relationships between Things
 - Multi-language support in content
 - Health check endpoint
-- API-first design with OpenAPI/Swagger documentation
+- API-first design and documentation with OpenAPI/Swagger
 
 ### Planned Features
 See our [Roadmap](ROADMAP.md) for details on:
@@ -59,6 +61,37 @@ The server will be available at:
 4. Verify installation:
 ```bash
 curl http://localhost:8000/health
+```
+
+5. Add sample data:
+
+```markdown
+### Sample Data
+To populate the server with sample data for testing and development:
+
+```bash
+# From project root
+./scripts/init_sample_data.sh
+```
+
+This will create sample things (a laptop and its components), relationships between them, and repair stories. Perfect for exploring the API capabilities.
+```
+
+6. Testing
+
+6.1. Install test dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+6.2. Run tests:
+```bash
+pytest
+```
+
+For test coverage report:
+```bash
+pytest --cov=app tests/
 ```
 
 ## Next Steps Recommended

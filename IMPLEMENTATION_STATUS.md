@@ -4,6 +4,9 @@
 
 ### Working Features
 
+- Sample data generation
+- Multi-step repair stories
+- Component relationships
 - Persistent database storage
 - Environment-based configuration
 - Backup capabilities
@@ -113,19 +116,47 @@
 ### Current Files
 ```
 thingdata-server/
-├── app/
-│   ├── static/          # Contains favicon
-│   ├── __init__.py
-│   ├── database.py      # Database configuration
-│   ├── logger.py        # Logging configuration
-│   ├── main.py          # API endpoints
-│   ├── models.py        # SQLAlchemy models
-│   └── schemas.py       # Pydantic schemas
-├── logs/                # Log files
-├── docker-compose.yml   # Docker configuration
-├── Dockerfile          
-├── requirements.txt     # Dependencies
-└── README.md
+├── app
+│   ├── config.py
+│   ├── database.py
+│   ├── federation.py
+│   ├── health.py
+│   ├── logger.py
+│   ├── main.py
+│   ├── models.py
+│   ├── schemas.py
+│   ├── static
+│   └────── favicon.ico
+├── backups
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── docker-compose.yml
+├── Dockerfile
+├── docs
+│   ├── api
+│   ├── advanced-operations.md
+│   ├── federation.md
+│   │    ├── network-discovery.md
+│   │    └── README.md
+│   └── workflows.md
+├── env.example
+├── IMPLEMENTATION_STATUS.md
+├── init-scripts
+│        └── 01-init.sql
+├── logs
+├── pyproject.toml
+├── README.md
+├── requirements.txt
+├── ROADMAP.md
+├── scripts
+│   ├── add_sample_data.py
+│   ├── backup.sh
+│   ├── cleanup.sh
+│   ├── update_version.py
+│   └── version.sh
+└── tests
+    └── test_api.py
+
 ```
 
 ### Database

@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.2] - 2024-11-30
 
 ### Added
+- Centralized version management
+- Version update script
+- Version environment variable
+- Testing configuration with pytest
+- Test coverage reporting
+- Testing documentation
+- Sample data initialization script in scripts/ directory
 - Environment configuration example file (.env.example)
 - Persistent database storage using named volumes
 - Centralized configuration management with config.py
@@ -19,13 +26,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Logs persistence
 
 ### Changed
+- Improved logging configuration
+- Version number now sourced from single location
+- Simplified test infrastructure
+- Updated tests to match current implementation
+- Removed async test configuration
 - Moved from development to production environment settings
-- Updated database connection pooling settings
+- Updated database connection pooling settings and persistence configuration
+- Updated development documentation
 - Improved logging configuration
 - Simplified Docker configuration
 - Consolidated environment configuration
 
 ### Removed
+- conftest.py (replaced with simplified test setup)
+- Async database test configuration
 - Obsolete development and test Docker compose files
 - Unused development tools
 - Legacy storage implementation
@@ -33,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Redundant initialization files
 
 ### Fixed
+- Logger initialization issues
+- Database connection handling in health checks
+- Version consistency across components
+- Python path configuration for tests
 - Data persistence across container rebuilds
 - Database connection management
 - Environment configuration handling

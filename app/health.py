@@ -48,7 +48,7 @@ class HealthChecker:
             return HealthResponse(
                 status="unhealthy",
                 timestamp=datetime.utcnow().isoformat(),
-                version="0.1.0",
+                version="0.1.2",
                 components={
                     "database": ComponentStatus.UNHEALTHY,
                     "api": ComponentStatus.HEALTHY
