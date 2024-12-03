@@ -3,7 +3,6 @@
 ## Related Documentation
 - [Core API Documentation](api/README.md)
 - [Advanced Operations](api/advanced-operations.md)
-- [Federation Protocol](api/federation.md)
 
 ## System Architecture
 
@@ -11,17 +10,10 @@
 graph TB
     Client[Client Applications] --> API[ThingData API]
     API --> DB[(Database)]
-    API --> Storage[Storage Service]
-    API --> Federation[Federation Service]
-    
-    Federation --> |Sync| Instance1[Remote Instance 1]
-    Federation --> |Sync| Instance2[Remote Instance 2]
     
     subgraph Services
         API
         DB
-        Storage
-        Federation
     end
 ```
 
@@ -30,8 +22,13 @@ graph TB
 ```mermaid
 erDiagram
     Thing ||--o{ Story : "has"
-    Thing ||--o{ Relationship : "has"
+    Thing ||--o{ Guide : "has"
+    Thing ||--o{ Relationship : "source_of"
     Thing ||--o{ Relationship : "target_of"
+    Story ||--o{ Relationship : "source_of"
+    Story ||--o{ Relationship : "target_of"
+    Guide ||--o{ Relationship : "source_of"
+    Guide ||--o{ Relationship : "target_of"
     
     Thing {
         string id
@@ -45,17 +42,29 @@ erDiagram
     Story {
         string id
         string thing_id
+        json thing_category
         string type
         json version
         json procedure
     }
     
-    Relationship {
+    Guide {
         string id
         string thing_id
+        json thing_category
+        json type
+        json content
+    }
+    
+    Relationship {
+        string id
+        string source_type
+        string source_id
+        string target_type
+        string target_id
         string relationship_type
-        string target_uri
-        json relation_metadata
+        string direction
+        json metadata
     }
 ```
 
@@ -82,8 +91,8 @@ sequenceDiagram
     User->>API: Create Repair Story
     API->>DB: Store Story
     
-    User->>API: Add Media to Story
-    API->>Storage: Store Media
+    User->>API: Create Guide
+    API->>DB: Store Guide
 ```
 
 Example API calls for this workflow:
@@ -97,8 +106,7 @@ curl -X POST http://localhost:8000/api/v1/things \
   "name": {
     "default": "Professional Coffee Machine XK-42",
     "translations": {
-      "es": "Máquina de Café Profesional XK-42",
-      "de": "Professionelle Kaffeemaschine XK-42"
+      "es": "Máquina de Café Profesional XK-42"
     }
   },
   "manufacturer": {
@@ -118,7 +126,7 @@ curl -X POST http://localhost:8000/api/v1/things \
 }'
 
 # Store the returned ID
-COFFEE_MACHINE_ID="returned_id_here"
+export COFFEE_MACHINE_ID="returned_id_here"
 
 # 2. Create pump component
 curl -X POST http://localhost:8000/api/v1/things \
@@ -126,15 +134,10 @@ curl -X POST http://localhost:8000/api/v1/things \
 -d '{
   "type": "component",
   "name": {
-    "default": "Water Pump 15 Bar",
-    "translations": {
-      "es": "Bomba de Agua 15 Bar",
-      "de": "Wasserpumpe 15 Bar"
-    }
+    "default": "Water Pump 15 Bar"
   },
   "manufacturer": {
-    "name": "PumpTech",
-    "website": "https://example.com"
+    "name": "PumpTech"
   },
   "properties": {
     "materials": ["brass", "steel"],
@@ -143,144 +146,60 @@ curl -X POST http://localhost:8000/api/v1/things \
 }'
 
 # Store the returned ID
-PUMP_ID="returned_id_here"
+export PUMP_ID="returned_id_here"
 
 # 3. Create relationship between machine and pump
 curl -X POST http://localhost:8000/api/v1/relationships \
 -H "Content-Type: application/json" \
 -d '{
-  "thing_id": "'$COFFEE_MACHINE_ID'",
-  "relationship_type": "component",
-  "target_uri": "thing:component/pumptech/waterpump-15bar",
-  "relation_metadata": {
-    "required": true,
-    "quantity": 1,
+  "source_type": "thing",
+  "source_id": "'$COFFEE_MACHINE_ID'",
+  "target_type": "thing",
+  "target_id": "'$PUMP_ID'",
+  "relationship_type": "has_component",
+  "direction": "unidirectional",
+  "metadata": {
     "position": "internal",
-    "maintenance_interval": "12 months"
+    "removable": true
   }
 }'
 
-# 4. Create repair story
-curl -X POST http://localhost:8000/api/v1/stories \
+# 4. Create repair guide
+curl -X POST http://localhost:8000/api/v1/guides \
 -H "Content-Type: application/json" \
 -d '{
   "thing_id": "'$COFFEE_MACHINE_ID'",
-  "type": "repair",
-  "procedure": [
-    {
-      "order": 1,
-      "description": {
-        "default": "Disconnect power and water supply",
-        "translations": {
-          "es": "Desconecte la alimentación y el suministro de agua",
-          "de": "Trennen Sie Strom- und Wasserversorgung"
-        }
-      },
-      "warnings": ["Ensure machine is completely powered off",
-                  "Wait 30 minutes for machine to cool down"],
-      "tools": []
-    },
-    {
-      "order": 2,
-      "description": {
-        "default": "Remove the side panel (6 screws)",
-        "translations": {
-          "es": "Quite el panel lateral (6 tornillos)",
-          "de": "Entfernen Sie die Seitenverkleidung (6 Schrauben)"
-        }
-      },
-      "tools": ["Phillips screwdriver PH2"]
-    },
-    {
-      "order": 3,
-      "description": {
-        "default": "Replace the pump",
-        "translations": {
-          "es": "Reemplace la bomba",
-          "de": "Ersetzen Sie die Pumpe"
-        }
-      },
-      "tools": ["Adjustable wrench", "Pliers"],
-      "warnings": ["Mark water line connections before disconnecting"]
-    }
-  ]
-}'
-```
-
-### 2. Alternative Parts Workflow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant API
-    participant DB
-    
-    User->>API: Get Thing Details
-    API->>DB: Fetch Thing
-    DB-->>API: Return Thing
-    
-    User->>API: Get Relationships
-    API->>DB: Fetch Relationships
-    DB-->>API: Return Relationships
-    
-    User->>API: Create Alternative Part
-    API->>DB: Store Alternative Part
-    
-    User->>API: Create Compatibility Relationship
-    API->>DB: Store Relationship
-    
-    Note over User,DB: Optional: Add compatibility notes
-```
-
-Example for documenting alternative parts:
-
-```bash
-# 1. Create alternative pump
-curl -X POST http://localhost:8000/api/v1/things \
--H "Content-Type: application/json" \
--d '{
-  "type": "component",
-  "name": {
-    "default": "Universal Pump 16 Bar",
-    "translations": {
-      "es": "Bomba Universal 16 Bar",
-      "de": "Universal-Pumpe 16 Bar"
-    }
+  "type": {
+    "primary": "repair",
+    "secondary": "maintenance"
   },
-  "manufacturer": {
-    "name": "GenericPumps",
-    "website": "https://example.com"
-  },
-  "properties": {
-    "materials": ["brass", "steel"],
-    "serial_number": "GP-16B-002"
-  }
-}'
-
-# Store the returned ID
-ALT_PUMP_ID="returned_id_here"
-
-# 2. Create compatibility relationship
-curl -X POST http://localhost:8000/api/v1/relationships \
--H "Content-Type: application/json" \
--d '{
-  "thing_id": "'$PUMP_ID'",
-  "relationship_type": "alternative",
-  "target_uri": "thing:component/genericpumps/universal-16bar",
-  "relation_metadata": {
-    "compatibility": {
-      "fully_compatible": true,
-      "notes": "Slightly higher pressure (16 bar vs 15 bar)",
-      "verified_by": "RepairCafe Berlin",
-      "verification_date": "2024-01-15"
-    }
+  "content": {
+    "title": {
+      "default": "Pump Replacement Guide"
+    },
+    "summary": {
+      "default": "How to replace the water pump"
+    },
+    "requirements": {
+      "skills": ["Basic mechanics"],
+      "tools": ["Screwdriver set"],
+      "materials": ["Replacement pump"]
+    },
+    "warnings": [
+      {
+        "severity": "CAUTION",
+        "message": {
+          "default": "Disconnect power before servicing"
+        }
+      }
+    ]
   }
 }'
 ```
 
-### 3. Development Workflows
+### 2. Development Workflows
 
-### Initial Setup
+#### Initial Setup
 
 1. Start the server:
 ```bash
@@ -293,16 +212,12 @@ docker-compose up -d
 ```
 
 This creates:
-- Framework laptop (main device)
-- Battery component
-- Display component
-- Relationships between components
-- Repair and maintenance stories
+- Sample laptop with components
+- Repair guides
+- Maintenance stories
+- Various relationships
 
 Perfect for:
 - API exploration
 - Integration testing
 - UI development
-
-## Federation Workflows
-For detailed federation examples and workflows, see the [Federation Protocol Documentation](api/federation.md).

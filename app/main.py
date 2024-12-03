@@ -16,8 +16,10 @@ from app.schemas import (
     StoryCreate, StoryResponse,
     GuideCreate, GuideResponse,
     RelationshipCreate, RelationshipResponse,
-    HealthResponse, ComponentStatus
+    HealthResponse, ComponentStatus,
+    EntityType
 )
+
 from app.health import HealthChecker
 from app.logger import setup_logger
 
@@ -51,35 +53,35 @@ favicon_path = static_dir / "favicon.ico"
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Root endpoint with API information."""
-    return """
+    return f"""
     <html>
         <head>
             <title>ThingData Server</title>
             <style>
-                body { 
+                body {{ 
                     font-family: Arial, sans-serif; 
                     max-width: 800px; 
                     margin: 40px auto; 
                     padding: 0 20px;
                     line-height: 1.6;
                     color: #333;
-                }
-                code { 
+                }}
+                code {{ 
                     background: #f4f4f4; 
                     padding: 2px 5px; 
                     border-radius: 3px; 
-                }
-                .footer {
+                }}
+                .footer {{
                     margin-top: 40px;
                     padding-top: 20px;
                     border-top: 1px solid #eee;
                     font-size: 0.9em;
                     color: #666;
-                }
-                h1 { color: #2c3e50; }
-                h2 { color: #34495e; margin-top: 30px; }
-                ul { padding-left: 20px; }
-                li { margin: 10px 0; }
+                }}
+                h1 {{ color: #2c3e50; }}
+                h2 {{ color: #34495e; margin-top: 30px; }}
+                ul {{ padding-left: 20px; }}
+                li {{ margin: 10px 0; }}
             </style>
         </head>
         <body>
@@ -93,6 +95,7 @@ async def root():
                 <li><code><a href="api/v1/things" title="things">/api/v1/things</a></code> - Thing management</li>
                 <li><code><a href="api/v1/stories" title="stories">/api/v1/stories</a></code> - Story management</li>
                 <li><code><a href="api/v1/guides" title="guides">/api/v1/guides</a></code> - Guide management</li>
+                <li><code><a href="api/v1/relationships" title="relationships">/api/v1/relationships</a></code> - Relationship management</li>
             </ul>
             
             <div class="footer">
@@ -117,6 +120,17 @@ async def get_favicon():
 async def health_check():
     """Comprehensive health check endpoint."""
     return await health_checker.check_health()
+
+# Add helper function
+async def verify_entity_exists(db: Session, entity_type: str, entity_id: str) -> bool:
+    """Verify that an entity exists in the database."""
+    if entity_type == EntityType.THING:
+        return db.query(Thing).filter(Thing.id == entity_id).first() is not None
+    elif entity_type == EntityType.GUIDE:
+        return db.query(Guide).filter(Guide.id == entity_id).first() is not None
+    elif entity_type == EntityType.STORY:
+        return db.query(Story).filter(Story.id == entity_id).first() is not None
+    return False
 
 @app.post("/api/v1/things", response_model=ThingResponse)
 async def create_thing(thing: ThingCreate, db: Session = Depends(get_db)):
@@ -147,11 +161,13 @@ async def create_thing(thing: ThingCreate, db: Session = Depends(get_db)):
 
 @app.get("/api/v1/things/{thing_id}", response_model=ThingResponse)
 async def get_thing(thing_id: str, db: Session = Depends(get_db)):
-    """Get a specific thing."""
+    """Get a specific thing with its relationships."""
     thing = db.query(Thing).filter(Thing.id == thing_id).first()
     if not thing:
         raise HTTPException(status_code=404, detail="Thing not found")
-    return thing.to_dict()
+    data = thing.to_dict()
+    data['relationships'] = [r.to_dict() for r in thing.get_relationships(db)]
+    return data
 
 @app.get("/api/v1/things", response_model=List[ThingResponse])
 async def list_things(
@@ -165,7 +181,8 @@ async def list_things(
     if type:
         query = query.filter(Thing.type == type)
     things = query.offset(skip).limit(limit).all()
-    return [thing.to_dict() for thing in things]
+    return [{**thing.to_dict(), 'relationships': [r.to_dict() for r in thing.get_relationships(db)]} 
+            for thing in things]
 
 @app.post("/api/v1/stories", response_model=StoryResponse)
 async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
@@ -207,19 +224,29 @@ async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
 async def list_stories(
     skip: int = 0,
     limit: int = 100,
+    thing_id: Optional[str] = None,
+    category: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    """List all stories with optional pagination."""
-    stories = db.query(Story).offset(skip).limit(limit).all()
-    return [story.to_dict() for story in stories]
+    """List all stories with optional filtering."""
+    query = db.query(Story)
+    if thing_id:
+        query = query.filter(Story.thing_id == thing_id)
+    if category:
+        query = query.filter(Story.thing_category['category'].astext == category)
+    stories = query.offset(skip).limit(limit).all()
+    return [{**story.to_dict(), 'relationships': [r.to_dict() for r in story.get_relationships(db)]} 
+            for story in stories]
 
 @app.get("/api/v1/stories/{story_id}", response_model=StoryResponse)
 async def get_story(story_id: str, db: Session = Depends(get_db)):
-    """Get a specific story."""
+    """Get a specific story with its relationships."""
     story = db.query(Story).filter(Story.id == story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
-    return story.to_dict()
+    data = story.to_dict()
+    data['relationships'] = [r.to_dict() for r in story.get_relationships(db)]
+    return data
 
 @app.get("/api/v1/things/{thing_id}/stories", response_model=List[StoryResponse])
 async def get_thing_stories(thing_id: str, db: Session = Depends(get_db)):
@@ -227,44 +254,77 @@ async def get_thing_stories(thing_id: str, db: Session = Depends(get_db)):
     stories = db.query(Story).filter(Story.thing_id == thing_id).all()
     return [story.to_dict() for story in stories]
 
-@app.get("/api/v1/things/{thing_id}/relationships", response_model=List[RelationshipResponse])
-async def get_thing_relationships(thing_id: str, db: Session = Depends(get_db)):
-    """Get all relationships for a thing."""
-    relationships = db.query(Relationship).filter(Relationship.thing_id == thing_id).all()
-    return [rel.to_dict() for rel in relationships]
-
 @app.post("/api/v1/relationships", response_model=RelationshipResponse)
 async def create_relationship(relationship: RelationshipCreate, db: Session = Depends(get_db)):
-    """Create a new relationship between things."""
+    """Create a new relationship."""
     try:
-        # Verify source thing exists
-        source_thing = db.query(Thing).filter(Thing.id == relationship.thing_id).first()
-        if not source_thing:
-            raise HTTPException(status_code=404, detail=f"Source Thing {relationship.thing_id} not found")
+        # Verify source exists
+        if not await verify_entity_exists(db, relationship.source_type, relationship.source_id):
+            raise HTTPException(
+                status_code=404, 
+                detail=f"{relationship.source_type} {relationship.source_id} not found"
+            )
 
-        # Verify target thing exists
-        target_thing = db.query(Thing).filter(Thing.id == relationship.target_uri).first()
-        if not target_thing:
-            raise HTTPException(status_code=404, detail=f"Target Thing {relationship.target_uri} not found")
+        # Verify target exists
+        if not await verify_entity_exists(db, relationship.target_type, relationship.target_id):
+            raise HTTPException(
+                status_code=404, 
+                detail=f"{relationship.target_type} {relationship.target_id} not found"
+            )
 
         relationship_db = Relationship(
             id=str(uuid.uuid4()),
-            thing_id=relationship.thing_id,
+            source_type=relationship.source_type,
+            source_id=relationship.source_id,
+            target_type=relationship.target_type,
+            target_id=relationship.target_id,
             relationship_type=relationship.relationship_type,
-            target_uri=relationship.target_uri,
-            relation_metadata=relationship.relation_metadata if relationship.relation_metadata else None
+            direction=relationship.direction,
+            metadata=relationship.metadata
         )
-        
         db.add(relationship_db)
         db.commit()
         db.refresh(relationship_db)
-        
-        logger.info(f"Created relationship {relationship_db.id} between {relationship.thing_id} and {relationship.target_uri}")
+        logger.info(f"Created relationship: {relationship_db.id}")
         return relationship_db.to_dict()
     except Exception as e:
         logger.error(f"Failed to create relationship: {str(e)}")
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/relationships", response_model=List[RelationshipResponse])
+async def list_relationships(
+    skip: int = 0,
+    limit: int = 100,
+    source_type: Optional[EntityType] = None,
+    source_id: Optional[str] = None,
+    target_type: Optional[EntityType] = None,
+    target_id: Optional[str] = None,
+    relationship_type: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """List relationships with optional filtering."""
+    query = db.query(Relationship)
+    if source_type:
+        query = query.filter(Relationship.source_type == source_type)
+    if source_id:
+        query = query.filter(Relationship.source_id == source_id)
+    if target_type:
+        query = query.filter(Relationship.target_type == target_type)
+    if target_id:
+        query = query.filter(Relationship.target_id == target_id)
+    if relationship_type:
+        query = query.filter(Relationship.relationship_type == relationship_type)
+    relationships = query.offset(skip).limit(limit).all()
+    return [rel.to_dict() for rel in relationships]
+
+@app.get("/api/v1/relationships/{relationship_id}", response_model=RelationshipResponse)
+async def get_relationship(relationship_id: str, db: Session = Depends(get_db)):
+    """Get a specific relationship."""
+    relationship = db.query(Relationship).filter(Relationship.id == relationship_id).first()
+    if not relationship:
+        raise HTTPException(status_code=404, detail="Relationship not found")
+    return relationship.to_dict()
 
 @app.post("/api/v1/guides", response_model=GuideResponse)
 async def create_guide(guide: GuideCreate, db: Session = Depends(get_db)):
@@ -313,15 +373,18 @@ async def list_guides(
     if type:
         query = query.filter(Guide.type['primary'].astext == type)
     guides = query.offset(skip).limit(limit).all()
-    return [guide.to_dict() for guide in guides]
-
+    return [{**guide.to_dict(), 'relationships': [r.to_dict() for r in guide.get_relationships(db)]} 
+            for guide in guides]
+            
 @app.get("/api/v1/guides/{guide_id}", response_model=GuideResponse)
 async def get_guide(guide_id: str, db: Session = Depends(get_db)):
-    """Get a specific guide."""
+    """Get a specific guide with its relationships."""
     guide = db.query(Guide).filter(Guide.id == guide_id).first()
     if not guide:
         raise HTTPException(status_code=404, detail="Guide not found")
-    return guide.to_dict()
+    data = guide.to_dict()
+    data['relationships'] = [r.to_dict() for r in guide.get_relationships(db)]
+    return data
 
 if __name__ == "__main__":
     import uvicorn

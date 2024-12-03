@@ -6,21 +6,34 @@ ThingData is a data-powered solution to promote a longer lifetime for goods and 
 
 ## Features
 
-### Currently Implemented (v0.1.2)
+### Currently Implemented (v0.1.3)
+- Guide entity with CRUD operations
+- Category-based repair documentation
+- Flexible relationship system between all entities
+- Bidirectional relationships
+- Enhanced relationship metadata support
+- Cross-entity relationship querying
+- Support for stories and guides without specific things
+- Category-based knowledge organization
+
+### Breaking Changes in v0.1.3
+- New relationship model requires different API calls
+- Stories and guides can now exist without specific things
+- Relationship queries have changed significantly
+- See [CHANGELOG.md](CHANGELOG.md) for detailed migration notes
+
+### Core Features (v0.1.2)
 - Persistent data storage
 - Environment-based configuration
 - Database backup capabilities
 - Improved logging system
 - Sample data generation
 - Test infrastructure
-
-### Currently Implemented (v0.1.1)
-- Basic CRUD operations for Things (products, objects, materials)
-- Basic CRUD operations for Repair Stories
-- Basic CRUD operations for Relationships between Things
+- Basic CRUD operations for Things
+- Basic CRUD operations for Stories
 - Multi-language support in content
 - Health check endpoint
-- API-first design and documentation with OpenAPI/Swagger
+- API-first design with OpenAPI/Swagger
 
 ### Planned Features
 See our [Roadmap](ROADMAP.md) for details on:
@@ -31,6 +44,8 @@ See our [Roadmap](ROADMAP.md) for details on:
 - Impact tracking
 
 ## Getting Started
+
+
 
 ### Prerequisites
 - Docker
@@ -66,18 +81,16 @@ curl http://localhost:8000/health
 ```
 
 5. Add sample data:
-
-```markdown
-### Sample Data
-To populate the server with sample data for testing and development:
-
 ```bash
 # From project root
 ./scripts/init_sample_data.sh
 ```
 
-This will create sample things (a laptop and its components), relationships between them, and repair stories. Perfect for exploring the API capabilities.
-```
+This will create sample data including:
+- A laptop and its components
+- A general laptop repair guide
+- Category-based repair stories
+- Various relationships between entities
 
 6. Testing
 
@@ -96,67 +109,80 @@ For test coverage report:
 pytest --cov=app tests/
 ```
 
-## Next Steps Recommended
+## API Overview
 
-1. Implement automatic backups:
-   - Set up cron jobs for regular backups
-   - Implement backup rotation
-   - Add backup verification
+### Core Endpoints
+- `GET /` - HTML documentation
+- `GET /health` - System health check
+- `/docs` - OpenAPI documentation (Swagger UI)
+- `/redoc` - Alternative API documentation
 
-2. Add monitoring:
-   - Track storage usage
-   - Monitor database performance
-   - Set up alerts for storage issues
+### Entity Management
+- `/api/v1/things` - Thing operations
+- `/api/v1/stories` - Story operations
+- `/api/v1/guides` - Guide operations
+- `/api/v1/relationships` - Relationship operations
 
-3. Implement data migration tools:
-   - Create database schema migrations
-   - Add data export/import tools
-   - Implement version tracking
-
-4. Enhance backup strategy:
-   - Add compression
-   - Implement point-in-time recovery
-   - Add remote backup storage
-
-## Migration Path
-
-1. For existing installations:
+### Quick Example: Creating Related Entities
 ```bash
-# Stop services
-docker-compose down
+# Create a thing
+curl -X POST http://localhost:8000/api/v1/things \
+-H "Content-Type: application/json" \
+-d '{
+  "type": "device",
+  "name": {"default": "Example Device"},
+  "manufacturer": {"name": "Example Corp"}
+}'
 
-# Backup current data
-docker exec -t thingdata-db pg_dumpall -c -U thingdata > dump.sql
+# Create a guide
+curl -X POST http://localhost:8000/api/v1/guides \
+-H "Content-Type: application/json" \
+-d '{
+  "thing_category": {
+    "category": "device",
+    "subcategory": "electronic"
+  },
+  "type": {
+    "primary": "repair",
+    "secondary": "maintenance"
+  },
+  "content": {
+    "title": {"default": "General Maintenance Guide"}
+  }
+}'
 
-# Remove old volumes
-docker volume rm thingdata_postgres_data
-
-# Start with new configuration
-docker-compose up -d
-
-# Restore data if needed
-cat dump.sql | docker exec -i thingdata-db psql -U thingdata
+# Create a relationship between them
+curl -X POST http://localhost:8000/api/v1/relationships \
+-H "Content-Type: application/json" \
+-d '{
+  "source_type": "guide",
+  "source_id": "guide_id",
+  "target_type": "thing",
+  "target_id": "thing_id",
+  "relationship_type": "applies_to",
+  "direction": "unidirectional"
+}'
 ```
 
-2. For new installations:
-```bash
-# Clone repository
-git clone https://github.com/reuse-city/thingdata-server.git
+### Category-based Documentation
+Support for stories and guides that apply to categories of things rather than specific items. See [API Documentation](docs/api/README.md) for detailed examples.
 
-# Configure environment
-cp .env.example .env
+### Relationships
+Flexible relationship system supporting all entity types:
+- Thing-to-Thing relationships
+- Guide-to-Thing relationships
+- Story-to-Thing relationships
+- Guide-to-Story relationships
+- Guide-to-Guide relationships
+- Story-to-Story relationships
 
-# Start services
-docker-compose up -d
-```
+## Documentation
 
-## API Documentation
-
-See our [API Documentation](docs/api/README.md) for:
-- Currently implemented endpoints
-- Data models
-- Usage examples
-- Error handling
+See our detailed documentation for:
+- [API Documentation](docs/api/README.md)
+- [Advanced Operations](docs/advanced-operations.md)
+- [Implementation Status](IMPLEMENTATION_STATUS.md)
+- [Development Workflows](docs/workflows.md)
 
 ## Contributing
 

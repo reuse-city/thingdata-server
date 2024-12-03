@@ -2,122 +2,85 @@
 
 > For current implementation status, see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)
 
-## Phase 1: Core Functionality 🚧
-Current phase - Basic data management and API functionality
+## Current Phase - Core Functionality Enhancement 🚧
+
+### Completed (v0.1.3) ✅
+- Guide entity implementation
+- Category-based documentation
+- Flexible relationship system
+- Cross-entity relationships
+- Bidirectional relationships
+- Enhanced metadata support
 
 ### In Progress
-- Basic CRUD operations optimization
-- Database schema refinement
-- API endpoint completion
-- Error handling improvements
-
-### Next Steps
-- Complete data validation system
-- Implement pre-flight checking
-  - Data consistency verification
-  - Relationship validation
-  - Format validation
-  - Schema compliance
-- Add search functionality
+- Search functionality
   - Basic text search
-  - Advanced filtering
+  - Category-based search
   - Relationship-based search
   - Multilingual support
+- Data validation
+  - Pre-flight checking
+  - Input validation
+  - Format validation
+  - Schema compliance
+- Batch operations
+  - Multi-entity creation
+  - Bulk updates
+  - Mass relationship management
 
-## Phase 2: Federation Foundation 📋
-Planned - Robust federation capabilities
+### Next Steps
+- Advanced filtering system
+  - Category filtering
+  - Relationship filtering
+  - Metadata queries
+  - Combined filters
+- API optimizations
+  - Response pagination
+  - Query optimization
+  - Error handling improvements
 
-### Foundation
-- Federation protocol design
-- Instance-to-instance communication
-- Basic content synchronization
-- Security foundations
-  - Instance authentication
-  - Content signatures
-  - Trust system
+## Planned Features
 
-### Conflict Resolution
-- Version tracking
-- Conflict detection
-- Resolution strategies
-  - Automatic resolution for simple conflicts
-  - Manual resolution workflow
-  - Version merging support
-- History preservation
+### Phase 2: Search & Discovery
+- Full-text search across all entities
+- Advanced filtering capabilities
+- Multi-language search support
+- Category-based discovery
+- Related content suggestions
+- Tag-based organization
 
-### Advanced Federation
-- Instance coordination
-- Data synchronization
-- Trust network building
-- Decentralized operation
-
-## Phase 3: Discovery & Security 📋
-Planned - Instance discovery and security enhancements
-
-### Discovery Features
-- Instance registry
-- DNS-based discovery
-- Peer exchange (PEX)
-- Local network discovery
-- Network topology management
-
-### Security Features
-- Authentication system
-- Authorization framework
-- Rate limiting
-- Audit logging
-- Data encryption
-
-## Phase 4: Knowledge Management 📋
-Planned - Enhanced data organization and accessibility
-
-### Data Organization
-- Advanced categorization
-- Tagging system
-- Relationship mapping
+### Phase 3: Content Management
+- Media handling
+- File attachments
 - Version control
-- Knowledge graphs
+- Content moderation
+- Batch operations
+- Import/Export capabilities
 
-### Content Features
-- Media management
-- Documentation system
-- Translation management
-- Expert verification
-- Community contributions
+### Phase 4: Federation System
+> Design documents available in docs/design/
+- Federation protocol
+- Instance discovery
+- Content synchronization
+- Trust system
+- Conflict resolution
+- Network topology
 
-## Phase 5: Impact & Analytics 📋
-Planned - Impact tracking and analysis capabilities
-
-### Impact Tracking
+### Phase 5: Impact & Analytics
 - Environmental metrics
 - Social impact measures
 - Resource conservation tracking
 - Community engagement metrics
 - Success rate tracking
+- Usage analytics
 
-### Analytics
-- Usage patterns
-- Repair statistics
-- Community metrics
-- Environmental impact
-- Resource efficiency
-
-## Phase 6: Scale & Performance 📋
-Planned - Scalability and performance improvements
-
-### Infrastructure
+### Phase 6: Scale & Performance
 - Load balancing
 - Caching system
 - Connection pooling
 - Query optimization
 - Resource management
-
-### Monitoring
-- System metrics
-- Performance tracking
-- Usage analytics
-- Error tracking
-- Health monitoring
+- Monitoring system
 
 ## Contributing
 See our [Contributing Guide](CONTRIBUTING.md) for information on how to help with these developments.
@@ -126,3 +89,4 @@ See our [Contributing Guide](CONTRIBUTING.md) for information on how to help wit
 - [API Documentation](docs/api/README.md)
 - [Implementation Status](IMPLEMENTATION_STATUS.md)
 - [Development Guide](docs/development.md)
+- [Design Documents](docs/design/) - Future feature designs

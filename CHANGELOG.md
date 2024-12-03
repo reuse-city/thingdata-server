@@ -1,21 +1,47 @@
 # Changelog
 
-
-## [0.1.3] - 2024-11-30
-
-### Added
-
-### Changed
-
-### Fixed
-
-
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Changelog
+## [0.1.3] - 2024-12-01
+
+### Added
+- New Guide entity with CRUD operations
+- Support for category-based stories and guides
+- Flexible relationship system between all entities (things, stories, guides)
+- Bidirectional relationships support
+- Enhanced relationship metadata
+- Cross-entity relationship querying capabilities
+- Updated API documentation with new endpoints
+
+### Changed
+- Modified relationship model to support multiple entity types
+- Made thing_id optional in stories for category-based documentation
+- Updated database schema for new relationship model
+- Enhanced API response format to include relationships
+- Improved relationship querying capabilities
+
+### Breaking Changes
+- Relationship API endpoints structure has changed completely
+  - Old: `/api/v1/relationships` expected thing_id and target_uri
+  - New: `/api/v1/relationships` expects source_type, source_id, target_type, target_id
+- Relationship model now requires direction field ('unidirectional' or 'bidirectional')
+- thing_id in stories and guides is now optional
+- GET /api/v1/things/{id}/relationships endpoint removed in favor of relationship field in response
+
+### Migration Notes
+- Existing relationships need to be updated to include source_type='thing' and target_type='thing'
+- Custom scripts using the relationship endpoints need to be updated
+- Applications should be updated to handle optional thing_id in stories/guides
+- Update any code that relied on /things/{id}/relationships to use new relationship queries
+
+### Fixed
+- Fixed relationship query handling
+- Improved error handling for relationship operations
+- Fixed relationship metadata handling
+- Corrected issues with entity relationship retrieval
 
 ## [0.1.2] - 2024-11-30
 
@@ -82,7 +108,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health check status reporting
 
 ### Technical Details
-
 - Using model_dump() for Pydantic models
 - Proper JSONB handling in PostgreSQL
 - Improved error handling and logging

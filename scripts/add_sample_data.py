@@ -66,6 +66,25 @@ def create_guide(data):
         logger.error(f"Failed to create guide: {response.text}")
         raise Exception(f"Failed to create guide: {response.text}")
 
+def create_relationship(source_type: str, source_id: str, target_type: str, target_id: str, 
+                       relationship_type: str, direction: str = "bidirectional", metadata: dict = None):
+    """Create a relationship between entities."""
+    data = {
+        "source_type": source_type,
+        "source_id": source_id,
+        "target_type": target_type,
+        "target_id": target_id,
+        "relationship_type": relationship_type,
+        "direction": direction,
+        "metadata": metadata or {}
+    }
+    response = requests.post(f"{BASE_URL}/api/v1/relationships", json=data)
+    if response.status_code == 200:
+        logger.info(f"Created relationship: {relationship_type} between {source_type}/{source_id} and {target_type}/{target_id}")
+    else:
+        logger.error(f"Failed to create relationship: {response.text}")
+        raise Exception(f"Failed to create relationship: {response.text}")
+
 def main():
     # 1. Create Laptop
     laptop = {
@@ -132,19 +151,23 @@ def main():
     }
     display_id = create_thing(display)
 
-    # Create relationships
+    # Create relationships between things
     create_relationship(
-        laptop_id, 
-        battery_id,
-        "has_component",
-        {"position": "bottom", "removable": True}
+        source_type="thing",
+        source_id=laptop_id,
+        target_type="thing",
+        target_id=battery_id,
+        relationship_type="has_component",
+        metadata={"position": "bottom", "removable": True}
     )
     
     create_relationship(
-        laptop_id,
-        display_id,
-        "has_component",
-        {"position": "lid", "removable": True}
+        source_type="thing",
+        source_id=laptop_id,
+        target_type="thing",
+        target_id=display_id,
+        relationship_type="has_component",
+        metadata={"position": "lid", "removable": True}
     )
 
     # 4. Create general laptop hinge repair guide
@@ -196,9 +219,20 @@ def main():
             ]
         }
     }
-    create_guide(laptop_guide)
 
-    # 5. Create fridge door upcycling story
+    guide_id = create_guide(laptop_guide)
+
+    # Create relationship between guide and laptop
+    create_relationship(
+        source_type="guide",
+        source_id=guide_id,
+        target_type="thing",
+        target_id=laptop_id,
+        relationship_type="applies_to",
+        direction="unidirectional",
+        metadata={"compatibility": "verified", "model_specific": False}
+    )
+
     fridge_story = {
         "thing_category": {
             "category": "appliance",
@@ -230,7 +264,18 @@ def main():
             }
         ]
     }
-    create_story(fridge_story)
+    story_id = create_story(fridge_story)
+
+    # Create relationship between story and guide
+    create_relationship(
+        source_type="story",
+        source_id=story_id,
+        target_type="guide",
+        target_id=guide_id,
+        relationship_type="references",
+        direction="unidirectional",
+        metadata={"context": "similar_technique"}
+    )
 
 if __name__ == "__main__":
     main()
