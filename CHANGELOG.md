@@ -1,9 +1,42 @@
 # Changelog
 
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.4] - 2024-12-06
+
+### Added
+- Comprehensive security validation system
+- Request size limits (10MB max)
+- JSON structure depth validation
+- Entity type validation
+- Content type enforcement
+- Enhanced error handling for security violations
+- Security documentation in API docs
+
+### Changed
+- Updated entity creation endpoints with security validations
+- Improved error responses with detailed security messages
+- Enhanced relationship validation
+- Updated documentation with security constraints
+- Modified sample data script to comply with security requirements
+
+### Fixed
+- Security validation for all POST/PUT/PATCH requests
+- Input validation for entity types
+- Request size handling
+- Content-type validation
+- JSON structure validation
+
+### Security
+- Added request size limits
+- Enforced allowed entity types
+- Implemented JSON structure validation
+- Added content-type validation
+- Enhanced error reporting for security issues
 
 ## [0.1.3] - 2024-12-01
 

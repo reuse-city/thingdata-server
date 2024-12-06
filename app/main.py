@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, status
+from app.security import configure_security, SecurityValidator, SecurityException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from sqlalchemy.orm import Session
@@ -32,6 +33,9 @@ app = FastAPI(
     description="ThingData Protocol v1.0 Implementation",
     version=VERSION
 )
+
+# Add security module
+configure_security(app)
 
 health_checker = HealthChecker()
 
@@ -136,9 +140,12 @@ async def verify_entity_exists(db: Session, entity_type: str, entity_id: str) ->
 async def create_thing(thing: ThingCreate, db: Session = Depends(get_db)):
     """Create a new thing."""
     try:
-        # Convert the Pydantic model to dict explicitly
         thing_data = thing.model_dump(mode='json')
-
+        
+        # Validate data
+        SecurityValidator.validate_json_depth(thing_data)
+        SecurityValidator.validate_thing_data(thing_data)
+        
         db_thing = Thing(
             id=str(uuid.uuid4()),
             uri=f"thing:{thing_data['type']}/{thing_data['manufacturer']['name']}/{thing_data['name']['default']}",
@@ -154,6 +161,9 @@ async def create_thing(thing: ThingCreate, db: Session = Depends(get_db)):
         
         logger.info(f"Created thing: {db_thing.id}")
         return db_thing.to_dict()
+    except SecurityException as e:
+        logger.error(f"Security validation failed: {str(e)}")
+        raise e
     except Exception as e:
         logger.error(f"Failed to create thing: {str(e)}")
         db.rollback()
@@ -188,11 +198,16 @@ async def list_things(
 async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
     """Create a new repair story."""
     try:
-        # Verify thing exists if thing_id is provided
         if story.thing_id:
             thing = db.query(Thing).filter(Thing.id == story.thing_id).first()
             if not thing:
                 raise HTTPException(status_code=404, detail=f"Thing {story.thing_id} not found")
+
+        story_data = story.model_dump(mode='json')
+        
+        # Validate data
+        SecurityValidator.validate_json_depth(story_data)
+        SecurityValidator.validate_story_data(story_data)
 
         procedure_list = [step.model_dump() for step in story.procedure]
         
@@ -215,6 +230,9 @@ async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
         
         logger.info(f"Created story {story_db.id}")
         return story_db.to_dict()
+    except SecurityException as e:
+        logger.error(f"Security validation failed: {str(e)}")
+        raise e
     except Exception as e:
         logger.error(f"Failed to create story: {str(e)}")
         db.rollback()
@@ -330,11 +348,16 @@ async def get_relationship(relationship_id: str, db: Session = Depends(get_db)):
 async def create_guide(guide: GuideCreate, db: Session = Depends(get_db)):
     """Create a new guide."""
     try:
-        # Verify thing exists if thing_id is provided
         if guide.thing_id:
             thing = db.query(Thing).filter(Thing.id == guide.thing_id).first()
             if not thing:
                 raise HTTPException(status_code=404, detail=f"Thing {guide.thing_id} not found")
+
+        guide_data = guide.model_dump(mode='json')
+        
+        # Validate data
+        SecurityValidator.validate_json_depth(guide_data)
+        SecurityValidator.validate_guide_data(guide_data)
 
         guide_db = Guide(
             id=str(uuid.uuid4()),
@@ -350,6 +373,9 @@ async def create_guide(guide: GuideCreate, db: Session = Depends(get_db)):
         
         logger.info(f"Created guide: {guide_db.id}")
         return guide_db.to_dict()
+    except SecurityException as e:
+        logger.error(f"Security validation failed: {str(e)}")
+        raise e
     except Exception as e:
         logger.error(f"Failed to create guide: {str(e)}")
         db.rollback()

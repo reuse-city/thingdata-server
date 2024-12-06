@@ -221,3 +221,45 @@ Perfect for:
 - API exploration
 - Integration testing
 - UI development
+
+## Security Best Practices
+
+### Data Validation
+1. Entity Types
+   - Always use predefined types for entities
+   - Validate type values before sending requests
+   - Check documentation for allowed values
+
+2. Request Size
+   - Keep requests under 10MB
+   - Split large content if necessary
+   - Use appropriate compression for media
+
+3. JSON Structure
+   - Avoid deeply nested structures
+   - Keep JSON depth under 20 levels
+   - Use flat structures when possible
+
+4. Content Types
+   - Always set `Content-Type: application/json`
+   - Validate JSON before sending
+   - Check response content types
+
+### Example: Secure Content Creation
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Validator
+    participant DB
+    
+    Client->>API: POST Request
+    API->>Validator: Validate Request
+    Note over Validator: Check:<br/>- Content Type<br/>- Request Size<br/>- Entity Types<br/>- JSON Structure
+    alt Valid Request
+        Validator->>DB: Store Data
+        DB-->>Client: Success Response
+    else Invalid Request
+        Validator-->>Client: Error Response
+    end
+```

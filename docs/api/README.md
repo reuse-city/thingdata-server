@@ -209,6 +209,60 @@ Query Parameters:
 }
 ```
 
+## Security Constraints
+
+### Request Limits
+- Maximum request size: 10MB
+- Content type: `application/json` required for all POST/PUT/PATCH requests
+- Maximum JSON nesting depth: 20 levels
+
+### Allowed Types
+#### Things
+- Allowed types: `device`, `component`, `material`, `tool`
+
+#### Stories
+- Allowed types: `repair`, `maintenance`, `modification`, `diagnosis`
+
+#### Guides
+- Primary types: `manual`, `tutorial`, `specification`, `documentation`
+- Secondary types: `repair`, `maintenance`
+
+### Relationships
+- Direction must be either `unidirectional` or `bidirectional`
+- Source and target types must be valid entity types (`thing`, `guide`, `story`)
+
+### Examples with Security Requirements
+
+```bash
+# Create a thing (with valid type)
+curl -X POST http://localhost:8000/api/v1/things \
+-H "Content-Type: application/json" \
+-d '{
+  "type": "device",  # Must be one of: device, component, material, tool
+  "name": {"default": "Example Device"},
+  "manufacturer": {"name": "Example Corp"}
+}'
+
+# Create a guide (with valid primary/secondary types)
+curl -X POST http://localhost:8000/api/v1/guides \
+-H "Content-Type: application/json" \
+-d '{
+  "type": {
+    "primary": "manual",     # Must be one of: manual, tutorial, specification, documentation
+    "secondary": "repair"    # Must be one of: repair, maintenance
+  },
+  "content": {
+    "title": {"default": "Example Guide"}
+  }
+}'
+```
+
+### Error Responses
+The API will return appropriate error status codes and messages for security violations:
+- `413 Request Entity Too Large` - Request exceeds 10MB
+- `400 Bad Request` - Invalid content type or invalid entity type
+- `400 Bad Request` - JSON structure too deep
+
 ## Working Examples
 
 See [advanced-operations.md](../advanced-operations.md) for detailed examples and workflows.

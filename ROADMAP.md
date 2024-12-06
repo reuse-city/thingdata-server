@@ -4,6 +4,13 @@
 
 ## Current Phase - Core Functionality Enhancement 🚧
 
+### Completed (v0.1.4) ✅
+- Security validation system
+- Request size limits
+- Entity type validation
+- Content type enforcement
+- Input validation improvements
+
 ### Completed (v0.1.3) ✅
 - Guide entity implementation
 - Category-based documentation
@@ -13,14 +20,18 @@
 - Enhanced metadata support
 
 ### In Progress
+- Authentication system
+- Authorization framework
+- Rate limiting
+- Audit logging
 - Search functionality
   - Basic text search
   - Category-based search
   - Relationship-based search
   - Multilingual support
 - Data validation
-  - Pre-flight checking
-  - Input validation
+  - Conflict detection
+  - Version control
   - Format validation
   - Schema compliance
 - Batch operations
