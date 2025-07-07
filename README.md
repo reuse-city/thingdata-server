@@ -1,205 +1,274 @@
-# ThingData Server
+# Nginx Configuration for thingdata-server
 
-ThingData is a data-powered solution to promote a longer lifetime for goods and materials. This repository contains the reference implementation of the ThingData Protocol server.
+This document provides instructions on how to set up Nginx to act as a reverse proxy for your `thingdata-server` application. This configuration will handle HTTP to HTTPS redirection and proxy pass requests to your application.
 
-**Attention:** good part of the code and documentation in this repository were created with the assistance of chatbots and large language models. If something looks weird, let us know.
+**Note on Docker Commands:** This guide assumes you are using Docker Compose V2, where commands are typically run as `docker compose ...` (no hyphen). If you are using an older, standalone version of Docker Compose (V1), your commands would be `docker-compose ...` (with a hyphen). It is recommended to use Docker Compose V2.
 
-## Features
+## Prerequisites
 
-### Currently Implemented (v0.1.3)
-- Guide entity with CRUD operations
-- Category-based repair documentation
-- Flexible relationship system between all entities
-- Bidirectional relationships
-- Enhanced relationship metadata support
-- Cross-entity relationship querying
-- Support for stories and guides without specific things
-- Category-based knowledge organization
+*   A running instance of `thingdata-server`. If you are running it via Docker as per a typical setup for this project, you would usually start it with `docker compose up --build`. (Assumed to be on `http://localhost:3000` as exposed by Nginx, though the actual app port might be different, e.g., 8000, inside Docker).
+*   A domain name or subdomain pointed to your server's IP address.
+*   Root or sudo access to your server.
 
-### Breaking Changes in v0.1.3
-- New relationship model requires different API calls
-- Stories and guides can now exist without specific things
-- Relationship queries have changed significantly
-- See [CHANGELOG.md](CHANGELOG.md) for detailed migration notes
+## 1. Install Nginx
 
-### Core Features (v0.1.2)
-- Persistent data storage
-- Environment-based configuration
-- Database backup capabilities
-- Improved logging system
-- Sample data generation
-- Test infrastructure
-- Basic CRUD operations for Things
-- Basic CRUD operations for Stories
-- Multi-language support in content
-- Health check endpoint
-- API-first design with OpenAPI/Swagger
+If you don't have Nginx installed, you can install it using your system's package manager.
 
-### Planned Features
-See our [Roadmap](ROADMAP.md) for details on:
-- Federation capabilities
-- Advanced search
-- File storage
-- Advanced relationship mapping
-- Impact tracking
+**For Debian/Ubuntu:**
 
-## Getting Started
-
-
-
-### Prerequisites
-- Docker
-- Docker Compose
-- Git
-
-### Installation
-1. Clone the repository:
 ```bash
-git clone git@github.com:reuse-city/thingdata-server.git
-cd thingdata-server
+sudo apt update
+sudo apt install nginx
 ```
 
-2. Configure environment:
+**For CentOS/RHEL:**
+
 ```bash
-cp env.example .env
-# Edit .env with your settings
+sudo yum install epel-release
+sudo yum install nginx
 ```
 
-3. Start the server:
+After installation, enable and start the Nginx service:
+
 ```bash
-docker-compose up --build
+sudo systemctl enable nginx
+sudo systemctl start nginx
 ```
 
-The server will be available at:
-- API: http://localhost:8000
-- Documentation: http://localhost:8000/docs
-- Alternative documentation: http://localhost:8000/redoc
+## 2. Configure Nginx
 
-4. Verify installation:
+The provided `thingdata.conf` file is a template for your Nginx configuration.
+
+### 2.1. Copy the Configuration File
+
+Copy `thingdata.conf` to Nginx's `sites-available` directory. It's good practice to name it after your domain.
+
 ```bash
-curl http://localhost:8000/health
+sudo cp thingdata.conf /etc/nginx/sites-available/your_domain_or_subdomain.com.conf
 ```
 
-5. Add sample data:
+### 2.2. Customize the Configuration
+
+Open the copied configuration file with a text editor (e.g., `nano`, `vim`):
+
 ```bash
-# From project root
-./scripts/init_sample_data.sh
+sudo nano /etc/nginx/sites-available/your_domain_or_subdomain.com.conf
 ```
 
-This will create sample data including:
-- A laptop and its components
-- A general laptop repair guide
-- Category-based repair stories
-- Various relationships between entities
+You **must** customize the following:
 
-6. Testing
+*   **`server_name`**: Replace `your_domain_or_subdomain.com` with your actual domain or subdomain in both server blocks (HTTP and HTTPS).
+*   **SSL Certificates**:
+    *   If you already have SSL certificates, uncomment and update these lines with the correct paths:
+        ```nginx
+        # ssl_certificate /path/to/your/fullchain.pem;
+        # ssl_certificate_key /path/to/your/privkey.pem;
+        ```
+    *   If you don't have SSL certificates, see section 3 for instructions on obtaining them with Let's Encrypt.
+*   **`proxy_pass` (if needed)**: If your `thingdata-server` is running on a port other than `3000`, change `http://localhost:3000` accordingly.
 
-6.1. Install test dependencies:
+### 2.3. Enable the Site Configuration
+
+Create a symbolic link from the `sites-available` directory to the `sites-enabled` directory:
+
 ```bash
-pip install -r requirements.txt
+sudo ln -s /etc/nginx/sites-available/your_domain_or_subdomain.com.conf /etc/nginx/sites-enabled/
 ```
 
-6.2. Run tests:
+**Important**: Ensure there are no conflicting default configurations. You might need to remove or disable the default Nginx configuration if it listens on port 80 for the same server name:
+
 ```bash
-pytest
+# Check if the default site is enabled
+ls /etc/nginx/sites-enabled/
+
+# If 'default' is present and you don't need it, remove the symlink
+# sudo rm /etc/nginx/sites-enabled/default
 ```
 
-For test coverage report:
+### 2.4. Test Nginx Configuration
+
+Before restarting Nginx, test your configuration for syntax errors:
+
 ```bash
-pytest --cov=app tests/
+sudo nginx -t
 ```
 
-## API Overview
+If the test is successful, you'll see output like:
 
-### Core Endpoints
-- `GET /` - HTML documentation
-- `GET /health` - System health check
-- `/docs` - OpenAPI documentation (Swagger UI)
-- `/redoc` - Alternative API documentation
-
-### Entity Management
-- `/api/v1/things` - Thing operations
-- `/api/v1/stories` - Story operations
-- `/api/v1/guides` - Guide operations
-- `/api/v1/relationships` - Relationship operations
-
-### Quick Example: Creating Related Entities
-```bash
-# Create a thing
-curl -X POST http://localhost:8000/api/v1/things \
--H "Content-Type: application/json" \
--d '{
-  "type": "device",
-  "name": {"default": "Example Device"},
-  "manufacturer": {"name": "Example Corp"}
-}'
-
-# Create a guide
-curl -X POST http://localhost:8000/api/v1/guides \
--H "Content-Type: application/json" \
--d '{
-  "thing_category": {
-    "category": "device",
-    "subcategory": "electronic"
-  },
-  "type": {
-    "primary": "repair",
-    "secondary": "maintenance"
-  },
-  "content": {
-    "title": {"default": "General Maintenance Guide"}
-  }
-}'
-
-# Create a relationship between them
-curl -X POST http://localhost:8000/api/v1/relationships \
--H "Content-Type: application/json" \
--d '{
-  "source_type": "guide",
-  "source_id": "guide_id",
-  "target_type": "thing",
-  "target_id": "thing_id",
-  "relationship_type": "applies_to",
-  "direction": "unidirectional"
-}'
+```
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
 ```
 
-### Category-based Documentation
-Support for stories and guides that apply to categories of things rather than specific items. See [API Documentation](docs/api/README.md) for detailed examples.
+If there are errors, the output will indicate the file and line number causing the issue.
 
-### Relationships
-Flexible relationship system supporting all entity types:
-- Thing-to-Thing relationships
-- Guide-to-Thing relationships
-- Story-to-Thing relationships
-- Guide-to-Story relationships
-- Guide-to-Guide relationships
-- Story-to-Story relationships
+### 2.5. Reload Nginx
 
-## Documentation
+If the configuration test is successful, reload Nginx to apply the changes:
 
-See our detailed documentation for:
-- [API Documentation](docs/api/README.md)
-- [Advanced Operations](docs/advanced-operations.md)
-- [Implementation Status](IMPLEMENTATION_STATUS.md)
-- [Development Workflows](docs/workflows.md)
+```bash
+sudo systemctl reload nginx
+```
 
-## Contributing
+## 3. Obtain SSL Certificates (Let's Encrypt)
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Let's Encrypt provides free SSL/TLS certificates. The easiest way to use Let's Encrypt with Nginx is by using `certbot`.
 
-See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
+### 3.1. Install Certbot
 
-## License
+**For Debian/Ubuntu:**
 
-This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). This license requires that modifications to this software must also be made available under the AGPL-3.0, both when distributed and when run over a network. For more details, see the [LICENSE](LICENSE) file in the repository.
+```bash
+sudo apt install certbot python3-certbot-nginx
+```
 
-The choice of the AGPL-3.0 license reflects our commitment to keeping knowledge about repair and reuse open and accessible to all, ensuring that improvements to this platform benefit the entire community.
+**For CentOS/RHEL:** (Instructions may vary slightly based on version)
 
-## Acknowledgments
+```bash
+sudo yum install certbot python2-certbot-nginx # Or python3-certbot-nginx if available
+```
 
-ThingData is a spin-off of PhD research at Northumbria University / Mozilla Foundation investigating social and conceptual aspects of waste prevention through community-based practices of material reuse.
+### 3.2. Obtain and Install Certificate
+
+Run Certbot, specifying your domain(s). Certbot will automatically detect your Nginx configuration for the specified domain and offer to modify it for HTTPS.
+
+```bash
+sudo certbot --nginx -d your_domain_or_subdomain.com
+```
+
+Follow the on-screen prompts. Certbot will:
+1.  Ask for your email address (for renewal notices).
+2.  Ask you to agree to the Terms of Service.
+3.  Ask if you want to share your email with the EFF.
+4.  Detect your server block from `your_domain_or_subdomain.com.conf`.
+5.  Offer to automatically configure HTTPS for you (it will update the SSL directives in your Nginx config). Choose this option.
+
+Certbot will then obtain the certificate and update your Nginx configuration to use it. It will also set up automatic renewal.
+
+If you chose to let Certbot modify your Nginx configuration, it will automatically uncomment and fill in the `ssl_certificate` and `ssl_certificate_key` lines in `/etc/nginx/sites-available/your_domain_or_subdomain.com.conf`.
+
+### 3.3. Verify Auto-Renewal
+
+Certbot should set up a cron job or systemd timer to automatically renew your certificates. You can test the renewal process with a dry run:
+
+```bash
+sudo certbot renew --dry-run
+```
+
+## 3.bis. Alternative: Creating Self-Signed SSL Certificates (for Development/Testing)
+
+If you are setting up a development or testing environment and do not need a publicly trusted SSL certificate, you can generate a self-signed certificate. Browsers will display a warning for self-signed certificates, but they can be useful for local development.
+
+**Warning:** Self-signed certificates do not provide the same level of trust as certificates issued by a Certificate Authority (CA) like Let's Encrypt. **Do not use self-signed certificates for production environments.**
+
+### 3.bis.1. Generate a Self-Signed Certificate and Key
+
+You can use OpenSSL to generate a private key and a self-signed certificate.
+
+1.  **Create a directory for your SSL certificates (if it doesn't exist):**
+    ```bash
+    sudo mkdir -p /etc/nginx/ssl
+    ```
+
+2.  **Generate the key and certificate:**
+    This command will create a 2048-bit RSA private key (`nginx-selfsigned.key`) and a self-signed certificate (`nginx-selfsigned.crt`) valid for 365 days. You will be prompted to enter information for the certificate (Country Name, State, Organization Name, etc.). You can leave most of these blank or fill them as you see fit. For "Common Name", it's good practice to use your domain name or server's IP address.
+
+    ```bash
+    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+        -keyout /etc/nginx/ssl/nginx-selfsigned.key \
+        -out /etc/nginx/ssl/nginx-selfsigned.crt
+    ```
+    *   `req -x509`: Specifies that we want to create a self-signed certificate.
+    *   `-nodes`: Skips the option to secure our key with a passphrase. Nginx needs to be able to read this file without intervention when starting.
+    *   `-days 365`: Sets the validity period of the certificate.
+    *   `-newkey rsa:2048`: Creates a new private key using RSA encryption with a 2048-bit key length.
+    *   `-keyout`: Specifies the output file for the private key.
+    *   `-out`: Specifies the output file for the certificate.
+
+3.  **Restrict permissions for the private key:**
+    ```bash
+    sudo chmod 600 /etc/nginx/ssl/nginx-selfsigned.key
+    ```
+
+### 3.bis.2. Configure Nginx to Use the Self-Signed Certificate
+
+Edit your Nginx site configuration file (e.g., `/etc/nginx/sites-available/your_domain_or_subdomain.com.conf`):
+
+```bash
+sudo nano /etc/nginx/sites-available/your_domain_or_subdomain.com.conf
+```
+
+In the `server` block that listens on port `443 ssl`, uncomment or add the following lines, pointing to the key and certificate you just created:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+
+    server_name your_domain_or_subdomain.com_or_localhost; # Adjust as needed
+
+    ssl_certificate /etc/nginx/ssl/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/nginx/ssl/nginx-selfsigned.key;
+
+    # ... other SSL settings and location block ...
+}
+```
+
+Make sure to replace `your_domain_or_subdomain.com_or_localhost` with the actual server name you are using for this development setup (e.g., `localhost`, `dev.example.com`).
+
+### 3.bis.3. Test and Reload Nginx
+
+After making these changes:
+
+1.  **Test your Nginx configuration:**
+    ```bash
+    sudo nginx -t
+    ```
+2.  **If the test is successful, reload Nginx:**
+    ```bash
+    sudo systemctl reload nginx
+    ```
+
+Now, when you access your site via HTTPS, it will use the self-signed certificate. Your browser will show a warning, which you'll need to accept to proceed.
+
+## 4. Firewall Configuration
+
+If you have a firewall enabled (e.g., `ufw` on Ubuntu, `firewalld` on CentOS), ensure that HTTP (port 80) and HTTPS (port 443) traffic are allowed.
+
+**For `ufw` (Ubuntu):**
+
+```bash
+sudo ufw allow 'Nginx Full' # Allows both HTTP and HTTPS
+# or individually:
+# sudo ufw allow 'Nginx HTTP'
+# sudo ufw allow 'Nginx HTTPS'
+sudo ufw enable
+sudo ufw status
+```
+
+**For `firewalld` (CentOS/RHEL):**
+
+```bash
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --reload
+```
+
+## 5. Testing
+
+Open your web browser and navigate to `http://your_domain_or_subdomain.com`. You should be automatically redirected to `https://your_domain_or_subdomain.com`, and you should see your `thingdata-server` application.
+
+Check the SSL certificate by clicking the padlock icon in your browser's address bar.
+
+## Customization Notes
+
+*   **Upstream Application Port**: If your `thingdata-server` runs on a port other than `3000`, update the `proxy_pass http://localhost:3000;` line in `thingdata.conf`.
+*   **WebSocket Support**: If your application uses WebSockets, uncomment the following lines in the `location /` block of your HTTPS server configuration:
+    ```nginx
+    # proxy_http_version 1.1;
+    # proxy_set_header Upgrade $http_upgrade;
+    # proxy_set_header Connection "upgrade";
+    ```
+*   **Advanced SSL/TLS Settings**: The `thingdata.conf` includes commented-out lines for recommended SSL/TLS security enhancements (cipher suites, HSTS, etc.). You can uncomment and adjust these as needed after you have HTTPS working. Research these settings to understand their implications.
+
+This completes the setup. Your Nginx server is now configured to securely proxy requests to your `thingdata-server`.
