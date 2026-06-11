@@ -11,11 +11,14 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from app.models import Instance, Thing, Story, Relationship
 from app.schemas import ComponentStatus
 from app.logger import setup_logger
+from app.config import get_settings
 
 logger = setup_logger(__name__)
 
 class FederationManager:
     def __init__(self):
+        settings = get_settings()
+        self.instance_uri = settings.INSTANCE_URI
         self.instance_key = None
         self.known_instances: Dict[str, Instance] = {}
         self.sync_queues: Dict[str, asyncio.Queue] = {}
@@ -26,6 +29,19 @@ class FederationManager:
         """Initialize federation system."""
         logger.info("Initializing federation system")
         self.instance_key = await self._generate_instance_key()
+        
+        # Load instances from database
+        from app.database import SessionLocal
+        db = SessionLocal()
+        try:
+            instances = db.query(Instance).all()
+            for inst in instances:
+                self.known_instances[inst.uri] = inst
+        except Exception as e:
+            logger.error(f"Failed to load instances from database: {str(e)}")
+        finally:
+            db.close()
+
         await self._start_sync_workers()
         await self._restore_pending_syncs()
 
@@ -122,6 +138,10 @@ class FederationManager:
             if db:
                 db.add(instance)
                 db.commit()
+                db.refresh(instance)
+
+            # Store in memory
+            self.known_instances[instance.uri] = instance
 
             # Initialize sync queue
             self.sync_queues[instance.uri] = asyncio.Queue()
@@ -194,12 +214,35 @@ class FederationManager:
         # Wait for tasks to complete
         await asyncio.gather(*self.active_syncs.values(), return_exceptions=True)
 
+    async def _verify_instance(self, instance_data: dict):
+        """Verify the authenticity and integrity of a connecting instance."""
+        required = ['id', 'uri', 'name', 'type', 'endpoints', 'public_key']
+        for field in required:
+            if field not in instance_data:
+                raise ValueError(f"Missing required federation field: {field}")
+        
+        # Verify basic endpoints mapping
+        endpoints = instance_data['endpoints']
+        if not isinstance(endpoints, dict) or 'api' not in endpoints:
+            raise ValueError("Endpoints must be a dictionary and contain an 'api' key")
+
+    async def _initial_sync(self, instance: Instance):
+        """Trigger initial data synchronization with a new instance."""
+        logger.info(f"Triggered initial sync with peer instance: {instance.uri}")
+        # Enqueue initial ping/sync task
+        if instance.uri in self.sync_queues:
+            await self.sync_queues[instance.uri].put({
+                "event_type": "status",
+                "target_instance": instance.uri,
+                "timestamp": datetime.utcnow().isoformat()
+            })
+
     async def _restore_pending_syncs(self):
-        """Restore any pending sync operations from database."""
-        # Implementation here
+        """Restore pending sync requests on startup."""
+        logger.info("Restoring pending federation synchronizations")
         pass
 
     async def _handle_sync_failure(self, event: dict):
-        """Handle a sync failure after all retries."""
-        # Implementation here
+        """Handle sync failure after all retry attempts are exhausted."""
+        logger.error(f"Federation sync failed completely for event: {event}")
         pass

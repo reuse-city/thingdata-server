@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"
     LOG_LEVEL: str = "INFO"
     
+    # Federation
+    INSTANCE_URI: str = "http://localhost:8000"
+    
     # Paths
     BASE_DIR: Path = Path(__file__).parent.parent
     LOG_DIR: Path = BASE_DIR / "logs"

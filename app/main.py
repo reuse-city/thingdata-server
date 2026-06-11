@@ -23,6 +23,7 @@ from app.schemas import (
 
 from app.health import HealthChecker
 from app.logger import setup_logger
+from app.federation import FederationManager
 
 # Initialize logger first
 logger = setup_logger(__name__)
@@ -110,10 +111,21 @@ async def root():
     </html>
     """
 
-# Initialize database on startup
+# Initialize database and federation on startup
 @app.on_event("startup")
 async def startup_event():
     init_db()
+    app.state.federation = FederationManager()
+    await app.state.federation.initialize()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    if hasattr(app.state, "federation"):
+        await app.state.federation.shutdown()
+
+def get_federation(request: Request) -> FederationManager:
+    """Retrieve the federation manager from the application state."""
+    return request.app.state.federation
 
 @app.get('/favicon.ico')
 async def get_favicon():
@@ -659,6 +671,148 @@ async def get_guide_archive(guide_id: str, db: Session = Depends(get_db)):
     if isinstance(ext, list):
         return [e.get("url", {}).get("archive", {}) for e in ext if "url" in e]
     return ext.get("url", {}).get("archive", {})
+
+# --- Federation Endpoints ---
+
+@app.get("/.well-known/webfinger")
+async def webfinger_discovery(
+    resource: Optional[str] = None,
+    db: Session = Depends(get_db),
+    federation: FederationManager = Depends(get_federation)
+):
+    """Handle WebFinger discovery requests."""
+    if resource:
+        # Check if resource is a local Thing URI (e.g. thing:...)
+        if resource.startswith("thing:"):
+            thing = db.query(Thing).filter(Thing.uri == resource).first()
+            if thing:
+                from app.config import get_settings
+                settings = get_settings()
+                return {
+                    "subject": resource,
+                    "links": [
+                        {
+                            "rel": "self",
+                            "href": f"{settings.INSTANCE_URI}/api/v1/things/{thing.id}",
+                            "type": "application/activity+json"
+                        }
+                    ]
+                }
+    return await federation.handle_webfinger()
+
+@app.post("/api/v1/federation/connect")
+async def connect_peer(
+    payload: dict,
+    db: Session = Depends(get_db),
+    federation: FederationManager = Depends(get_federation)
+):
+    """Register/connect a new federation peer instance."""
+    uri = payload.get("instance_uri") or payload.get("uri")
+    if not uri:
+        raise HTTPException(status_code=400, detail="Missing instance_uri or uri")
+        
+    public_key = payload.get("public_key")
+    if not public_key:
+        raise HTTPException(status_code=400, detail="Missing public_key")
+        
+    instance_data = {
+        "id": payload.get("id") or str(uuid.uuid4()),
+        "uri": uri,
+        "name": payload.get("name") or payload.get("instance_name") or uri.split("//")[-1],
+        "type": payload.get("type") or payload.get("instance_type") or "peer",
+        "endpoints": payload.get("endpoints") or {
+            "api": f"{uri}/api/v1",
+            "health": f"{uri}/health",
+            "status": f"{uri}/api/v1/federation/status"
+        },
+        "public_key": public_key,
+        "capabilities": payload.get("capabilities") or ["sync"],
+        "languages": payload.get("languages") or ["en"]
+    }
+    
+    try:
+        instance = await federation.connect_instance(instance_data, db)
+        return {
+            "status": "connected",
+            "instance": instance.to_dict()
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error connecting instance: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/federation/announce")
+async def announce_event(payload: dict):
+    """Receive an announcement of new content from a federation peer."""
+    logger.info(f"Received federation announcement: {payload}")
+    return {"status": "announced", "message": "Announcement received"}
+
+@app.post("/api/v1/federation/sync")
+async def sync_resources(payload: dict, db: Session = Depends(get_db)):
+    """Synchronize resources requested by a peer."""
+    uris = payload.get("uris", [])
+    since_str = payload.get("since")
+    since = None
+    if since_str:
+        try:
+            since = datetime.fromisoformat(since_str.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+            
+    results = []
+    
+    if uris:
+        for uri in uris:
+            thing = db.query(Thing).filter(Thing.uri == uri).first()
+            if thing:
+                results.append({"type": "thing", "data": thing.to_dict()})
+            # Also search by ID or custom logic if story/guide
+            story = db.query(Story).filter(Story.id == uri).first()
+            if story:
+                results.append({"type": "story", "data": story.to_dict()})
+            guide = db.query(Guide).filter(Guide.id == uri).first()
+            if guide:
+                results.append({"type": "guide", "data": guide.to_dict()})
+    elif since:
+        things = db.query(Thing).filter(Thing.updated_at >= since).all()
+        for t in things:
+            results.append({"type": "thing", "data": t.to_dict()})
+        stories = db.query(Story).filter(Story.updated_at >= since).all()
+        for s in stories:
+            results.append({"type": "story", "data": s.to_dict()})
+        guides = db.query(Guide).filter(Guide.updated_at >= since).all()
+        for g in guides:
+            results.append({"type": "guide", "data": g.to_dict()})
+    else:
+        things = db.query(Thing).all()
+        for t in things:
+            results.append({"type": "thing", "data": t.to_dict()})
+        stories = db.query(Story).all()
+        for s in stories:
+            results.append({"type": "story", "data": s.to_dict()})
+        guides = db.query(Guide).all()
+        for g in guides:
+            results.append({"type": "guide", "data": g.to_dict()})
+            
+    return {"results": results}
+
+@app.get("/api/v1/federation/discover")
+async def discover_peers(federation: FederationManager = Depends(get_federation)):
+    """Discover connected federation peer instances."""
+    peers = [inst.to_dict() for inst in federation.known_instances.values()]
+    return {"peers": peers}
+
+@app.get("/api/v1/federation/status")
+async def federation_status(federation: FederationManager = Depends(get_federation)):
+    """Retrieve federation system status and metrics."""
+    health = await federation.check_health()
+    return {
+        "connected_count": len(federation.known_instances),
+        "active_syncs_count": len(federation.active_syncs),
+        "health": health,
+        "queue_sizes": {uri: q.qsize() for uri, q in federation.sync_queues.items()}
+    }
 
 if __name__ == "__main__":
     import uvicorn

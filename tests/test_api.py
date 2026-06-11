@@ -1,51 +1,30 @@
+import os
+os.environ["DATABASE_URL"] = "sqlite://"
+
 import pytest
 from fastapi.testclient import TestClient
 import uuid
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.main import app, get_db
-from app.database import Base
-
-# Set up isolated in-memory SQLite database for testing
-TEST_DATABASE_URL = "sqlite:///:memory:"
-
-test_engine = create_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
-
-# Override the database dependency in FastAPI
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
+from app.database import Base, engine, SessionLocal, init_db
 
 @pytest.fixture(scope="module")
 def test_client():
     """Create test client."""
-    # Set up test database tables
-    Base.metadata.create_all(bind=test_engine)
+    init_db()
     
-    client = TestClient(app)
-    yield client
-    
-    # Clean up test database tables
-    Base.metadata.drop_all(bind=test_engine)
+    with TestClient(app) as client:
+        yield client
+        
+    Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture
 def test_db():
     """Create fresh test database session for each test."""
-    db = TestingSessionLocal()
+    db = SessionLocal()
     try:
         yield db
     finally:

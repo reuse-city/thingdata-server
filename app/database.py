@@ -5,11 +5,23 @@ from app.config import get_settings
 
 settings = get_settings()
 
+connect_args = {}
+engine_kwargs = {
+    "pool_pre_ping": True
+}
+
+if settings.DATABASE_URL.startswith("postgresql"):
+    engine_kwargs["pool_size"] = 5
+    engine_kwargs["max_overflow"] = 10
+elif settings.DATABASE_URL.startswith("sqlite"):
+    from sqlalchemy.pool import StaticPool
+    connect_args["check_same_thread"] = False
+    engine_kwargs["poolclass"] = StaticPool
+
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_pre_ping=True,  # Added connection health check
-    pool_size=5,         # Connection pool settings
-    max_overflow=10
+    connect_args=connect_args,
+    **engine_kwargs
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
