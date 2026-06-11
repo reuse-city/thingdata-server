@@ -24,3 +24,25 @@ def get_db():
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    
+    # Check and dynamically add missing columns
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    
+    # Check stories
+    columns = [col['name'] for col in inspector.get_columns('stories')]
+    with engine.begin() as conn:
+        if 'author' not in columns:
+            conn.execute(text("ALTER TABLE stories ADD COLUMN author JSON"))
+        if 'metadata' not in columns:
+            conn.execute(text("ALTER TABLE stories ADD COLUMN metadata JSON"))
+        if 'prerequisites' not in columns:
+            conn.execute(text("ALTER TABLE stories ADD COLUMN prerequisites JSON"))
+            
+    # Check guides
+    columns = [col['name'] for col in inspector.get_columns('guides')]
+    with engine.begin() as conn:
+        if 'source' not in columns:
+            conn.execute(text("ALTER TABLE guides ADD COLUMN source JSON"))
+        if 'external_content' not in columns:
+            conn.execute(text("ALTER TABLE guides ADD COLUMN external_content JSON"))

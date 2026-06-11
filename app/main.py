@@ -13,10 +13,10 @@ from app.version import VERSION
 from app.database import get_db, init_db
 from app.models import Thing, Story, Guide, Relationship
 from app.schemas import (
-    ThingCreate, ThingResponse,
-    StoryCreate, StoryResponse,
-    GuideCreate, GuideResponse,
-    RelationshipCreate, RelationshipResponse,
+    ThingCreate, ThingUpdate, ThingResponse,
+    StoryCreate, StoryUpdate, StoryResponse,
+    GuideCreate, GuideUpdate, GuideResponse,
+    RelationshipCreate, RelationshipUpdate, RelationshipResponse,
     HealthResponse, ComponentStatus,
     EntityType
 )
@@ -141,18 +141,19 @@ async def create_thing(thing: ThingCreate, db: Session = Depends(get_db)):
     """Create a new thing."""
     try:
         thing_data = thing.model_dump(mode='json')
+        thing_payload = thing_data['data']
         
         # Validate data
         SecurityValidator.validate_json_depth(thing_data)
-        SecurityValidator.validate_thing_data(thing_data)
+        SecurityValidator.validate_thing_data(thing_payload)
         
         db_thing = Thing(
             id=str(uuid.uuid4()),
-            uri=f"thing:{thing_data['type']}/{thing_data['manufacturer']['name']}/{thing_data['name']['default']}",
-            type=thing_data['type'],
-            name=thing_data['name'],
-            manufacturer=thing_data['manufacturer'],
-            properties=thing_data.get('properties', {})
+            uri=f"thing:{thing_payload['type']}/{thing_payload['manufacturer']['name']}/{thing_payload['name']['default']}",
+            type=thing_payload['type'],
+            name=thing_payload['name'],
+            manufacturer=thing_payload['manufacturer'],
+            properties=thing_payload.get('properties', {})
         )
         
         db.add(db_thing)
@@ -185,7 +186,7 @@ async def list_things(
     limit: int = 100,
     type: Optional[str] = None,
     db: Session = Depends(get_db)
-):
+ ):
     """List all things with optional filtering."""
     query = db.query(Thing)
     if type:
@@ -204,23 +205,27 @@ async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
                 raise HTTPException(status_code=404, detail=f"Thing {story.thing_id} not found")
 
         story_data = story.model_dump(mode='json')
+        story_payload = story_data['data']
         
         # Validate data
         SecurityValidator.validate_json_depth(story_data)
-        SecurityValidator.validate_story_data(story_data)
+        SecurityValidator.validate_story_data(story_payload)
 
-        procedure_list = [step.model_dump() for step in story.procedure]
+        procedure_list = [step.model_dump() for step in story.data.procedure.steps]
         
         story_db = Story(
             id=str(uuid.uuid4()),
             thing_id=story.thing_id,
             thing_category=story.thing_category.model_dump() if story.thing_category else None,
-            version={
+            version=story_payload.get('version', {
                 "number": "1.0.0",
                 "date": datetime.utcnow().isoformat(),
                 "history": []
-            },
-            type=story.type,
+            }),
+            type=story_payload['type'],
+            author=story_payload.get('author'),
+            story_metadata=story_payload.get('metadata'),
+            prerequisites=story_payload.get('prerequisites'),
             procedure=procedure_list
         )
         
@@ -354,17 +359,20 @@ async def create_guide(guide: GuideCreate, db: Session = Depends(get_db)):
                 raise HTTPException(status_code=404, detail=f"Thing {guide.thing_id} not found")
 
         guide_data = guide.model_dump(mode='json')
+        guide_payload = guide_data['data']
         
         # Validate data
         SecurityValidator.validate_json_depth(guide_data)
-        SecurityValidator.validate_guide_data(guide_data)
+        SecurityValidator.validate_guide_data(guide_payload)
 
         guide_db = Guide(
             id=str(uuid.uuid4()),
             thing_id=guide.thing_id,
             thing_category=guide.thing_category.model_dump() if guide.thing_category else None,
-            type=guide.type.model_dump(),
-            content=guide.content.model_dump()
+            type=guide_payload['type'],
+            content=guide_payload['content'],
+            source=guide_payload.get('source'),
+            external_content=guide_payload.get('external_content')
         )
         
         db.add(guide_db)
@@ -524,6 +532,133 @@ async def delete_relationship(
     db.delete(relationship)
     db.commit()
     logger.info(f"Deleted relationship: {relationship_id}")
+
+# --- PUT Update Endpoints ---
+
+@app.put("/api/v1/things/{thing_id}", response_model=ThingResponse)
+async def update_thing(thing_id: str, thing_update: ThingUpdate, db: Session = Depends(get_db)):
+    """Update an existing thing."""
+    db_thing = db.query(Thing).filter(Thing.id == thing_id).first()
+    if not db_thing:
+        raise HTTPException(status_code=404, detail="Thing not found")
+    
+    update_data = thing_update.model_dump(exclude_unset=True)
+    if 'data' in update_data and update_data['data'] is not None:
+        data_payload = update_data['data']
+        if 'type' in data_payload:
+            db_thing.type = data_payload['type']
+        if 'name' in data_payload:
+            db_thing.name = data_payload['name']
+        if 'manufacturer' in data_payload:
+            db_thing.manufacturer = data_payload['manufacturer']
+        if 'properties' in data_payload:
+            db_thing.properties = data_payload['properties']
+            
+        # Regenerate URI if name/manufacturer/type changed
+        db_thing.uri = f"thing:{db_thing.type}/{db_thing.manufacturer['name']}/{db_thing.name['default']}"
+        
+    db_thing.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(db_thing)
+    return db_thing.to_dict()
+
+@app.put("/api/v1/stories/{story_id}", response_model=StoryResponse)
+async def update_story(story_id: str, story_update: StoryUpdate, db: Session = Depends(get_db)):
+    """Update an existing story."""
+    db_story = db.query(Story).filter(Story.id == story_id).first()
+    if not db_story:
+        raise HTTPException(status_code=404, detail="Story not found")
+        
+    update_data = story_update.model_dump(exclude_unset=True)
+    if 'data' in update_data and update_data['data'] is not None:
+        data_payload = update_data['data']
+        if 'type' in data_payload:
+            db_story.type = data_payload['type']
+        if 'version' in data_payload:
+            db_story.version = data_payload['version']
+        if 'author' in data_payload:
+            db_story.author = data_payload['author']
+        if 'metadata' in data_payload:
+            db_story.story_metadata = data_payload['metadata']
+        if 'prerequisites' in data_payload:
+            db_story.prerequisites = data_payload['prerequisites']
+        if 'procedure' in data_payload:
+            proc = data_payload['procedure']
+            if isinstance(proc, dict) and 'steps' in proc:
+                db_story.procedure = proc['steps']
+            else:
+                db_story.procedure = proc
+                
+    db_story.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(db_story)
+    return db_story.to_dict()
+
+@app.put("/api/v1/guides/{guide_id}", response_model=GuideResponse)
+async def update_guide(guide_id: str, guide_update: GuideUpdate, db: Session = Depends(get_db)):
+    """Update an existing guide."""
+    db_guide = db.query(Guide).filter(Guide.id == guide_id).first()
+    if not db_guide:
+        raise HTTPException(status_code=404, detail="Guide not found")
+        
+    update_data = guide_update.model_dump(exclude_unset=True)
+    if 'data' in update_data and update_data['data'] is not None:
+        data_payload = update_data['data']
+        if 'type' in data_payload:
+            db_guide.type = data_payload['type']
+        if 'content' in data_payload:
+            db_guide.content = data_payload['content']
+        if 'source' in data_payload:
+            db_guide.source = data_payload['source']
+        if 'external_content' in data_payload:
+            db_guide.external_content = data_payload['external_content']
+            
+    db_guide.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(db_guide)
+    return db_guide.to_dict()
+
+@app.put("/api/v1/relationships/{relationship_id}", response_model=RelationshipResponse)
+async def update_relationship(relationship_id: str, relationship_update: RelationshipUpdate, db: Session = Depends(get_db)):
+    """Update an existing relationship."""
+    db_rel = db.query(Relationship).filter(Relationship.id == relationship_id).first()
+    if not db_rel:
+        raise HTTPException(status_code=404, detail="Relationship not found")
+        
+    update_data = relationship_update.model_dump(exclude_unset=True)
+    for key, val in update_data.items():
+        if key == 'metadata':
+            db_rel.relation_metadata = val
+        else:
+            setattr(db_rel, key, val)
+            
+    db_rel.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(db_rel)
+    return db_rel.to_dict()
+
+# --- Guide External Content & Archival Sub-resources ---
+
+@app.get("/api/v1/guides/{guide_id}/external-content")
+async def get_guide_external_content(guide_id: str, db: Session = Depends(get_db)):
+    """Get the external content metadata associated with a guide."""
+    guide = db.query(Guide).filter(Guide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Guide not found")
+    return guide.external_content or {}
+
+@app.get("/api/v1/guides/{guide_id}/archive")
+async def get_guide_archive(guide_id: str, db: Session = Depends(get_db)):
+    """Get Internet Archive status for a guide's external content."""
+    guide = db.query(Guide).filter(Guide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Guide not found")
+    ext = guide.external_content
+    if not ext:
+        return {"status": "FAILED", "detail": "No external content associated"}
+    if isinstance(ext, list):
+        return [e.get("url", {}).get("archive", {}) for e in ext if "url" in e]
+    return ext.get("url", {}).get("archive", {})
 
 if __name__ == "__main__":
     import uvicorn

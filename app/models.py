@@ -81,12 +81,14 @@ class Thing(Base):
         return {
             'id': self.id,
             'uri': self.uri,
-            'type': self.type,
-            'name': self.name,
-            'manufacturer': self.manufacturer,
-            'properties': self.properties,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'data': {
+                'type': self.type,
+                'name': self.name,
+                'manufacturer': self.manufacturer,
+                'properties': self.properties
+            }
         }
 
 class Story(Base):
@@ -95,6 +97,9 @@ class Story(Base):
     id = Column(String, primary_key=True)
     thing_id = Column(String, ForeignKey("things.id"), nullable=True)
     thing_category = Column(JSONB, nullable=True)
+    author = Column(JSONB, nullable=True)
+    story_metadata = Column("metadata", JSONB, nullable=True)
+    prerequisites = Column(JSONB, nullable=True)
     version = Column(JSONB, nullable=False)
     type = Column(String, nullable=False)
     procedure = Column(JSONB, nullable=False)
@@ -136,11 +141,18 @@ class Story(Base):
             'id': self.id,
             'thing_id': self.thing_id,
             'thing_category': self.thing_category,
-            'version': self.version,
-            'type': self.type,
-            'procedure': self.procedure,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'data': {
+                'type': self.type,
+                'version': self.version,
+                'author': self.author,
+                'metadata': self.story_metadata,
+                'prerequisites': self.prerequisites,
+                'procedure': {
+                    'steps': self.procedure
+                }
+            }
         }
 
 class Guide(Base):
@@ -151,6 +163,8 @@ class Guide(Base):
     thing_category = Column(JSONB, nullable=True)
     type = Column(JSONB, nullable=False)
     content = Column(JSONB, nullable=False)
+    source = Column(JSONB, nullable=True)
+    external_content = Column(JSONB, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
@@ -189,10 +203,14 @@ class Guide(Base):
             'id': self.id,
             'thing_id': self.thing_id,
             'thing_category': self.thing_category,
-            'type': self.type,
-            'content': self.content,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'data': {
+                'type': self.type,
+                'content': self.content,
+                'source': self.source,
+                'external_content': self.external_content
+            }
         }
 
 class Instance(Base):
