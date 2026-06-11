@@ -40,6 +40,9 @@
   - Mass relationship management
 
 ### Next Steps
+- Core CRUD Completion
+  - Implement entity update endpoints (`PUT` for things, stories, guides, and relationships)
+  - Align models/schemas with protocol (nest under `"data"` object or resolve nesting standard; implement missing fields for `Thing.sustainability`, `Story.author`, `Story.prerequisites`, and `Guide.source`)
 - Advanced filtering system
   - Category filtering
   - Relationship filtering
@@ -53,7 +56,7 @@
 ## Planned Features
 
 ### Phase 2: Search & Discovery
-- Full-text search across all entities
+- Full-text search across all entities (PostgreSQL FTS)
 - Advanced filtering capabilities
 - Multi-language search support
 - Category-based discovery
@@ -61,21 +64,20 @@
 - Tag-based organization
 
 ### Phase 3: Content Management
-- Media handling
-- File attachments
-- Version control
-- Content moderation
-- Batch operations
-- Import/Export capabilities
+- Media handling & file attachments
+- Version control & content moderation
+- External content archive integration
+  - Implement `GET /api/v1/guides/{id}/external-content`
+  - Implement `GET /api/v1/guides/{id}/archive`
+- Batch operations & import/export capabilities
 
 ### Phase 4: Federation System
 > Design documents available in docs/design/
-- Federation protocol
-- Instance discovery
-- Content synchronization
-- Trust system
-- Conflict resolution
-- Network topology
+- Mount federation router in `app/main.py`
+- Expose discovery endpoints (`GET /.well-known/webfinger` & `GET /api/v1/federation/discover`)
+- Expose interaction routes (`POST /api/v1/federation/connect` & `POST /api/v1/federation/announce`)
+- Expose synchronization endpoints (`POST /api/v1/federation/sync` & `GET /api/v1/federation/status`)
+- Instance discovery, trust system, and conflict resolution
 
 ### Phase 5: Impact & Analytics
 - Environmental metrics

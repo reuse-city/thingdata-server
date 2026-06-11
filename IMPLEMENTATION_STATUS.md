@@ -52,12 +52,19 @@
 ### Current Issues
 
 1. Data Model Implementation
+   - Schema mismatch with protocol specification (lack of wrapper `"data"` object in server models)
+   - Missing core fields from protocol specification:
+     - `Thing`: sustainability metrics/certifications, model variations, and specific physical properties value-unit objects
+     - `Story`: author profiles, prerequisites (skills, tools, parts, safety details), and detailed step metadata (step title, tools/parts used, verification checks)
+     - `Guide`: source publication details, license, and external content format/verification fields
    - Complex relationship queries need optimization
    - Category-based search needs improvement
    - Advanced filtering capabilities needed
    - Multi-language search not implemented
 
 2. API Endpoints
+   - Missing entity update endpoints (`PUT` for things, stories, guides, and relationships)
+   - Missing guide archive and external content access endpoints (`GET /api/v1/guides/{id}/external-content` & `GET /api/v1/guides/{id}/archive`)
    - Need batch operations
    - Advanced search implementation pending
    - Pagination improvement required
@@ -70,7 +77,6 @@
    - Data versioning incomplete
 
 4. Security
-
    - [x] Basic request validation
    - [x] Size limits
    - [x] Content validation
@@ -80,21 +86,26 @@
    - Audit logging pending
 
 5. Federation
-   - Instance discovery not implemented
-   - Data synchronization pending
+   - Federation engine (`app/federation.py`) exists but routes are not exposed in FastAPI application
+   - Instance discovery endpoints not exposed
+   - Data synchronization endpoints pending
    - Trust mechanisms needed
    - Conflict resolution system pending
 
 ### Missing Features
 
 1. Core Functionality
+   - Entity update endpoints (`PUT /api/v1/...`)
+   - Complete data model attributes (Author profiles, Prerequisites, Sustainability scores, Source specs)
+   - Guide archival sub-resources (`external-content`, `archive`)
    - Search capability
    - Batch operations
    - Advanced pagination
    - Complex filtering
 
 2. Federation Support
-   - Instance discovery
+   - Federation router registration in main.py
+   - Instance discovery & connection
    - Data synchronization
    - Trust mechanisms
    - Conflict resolution
