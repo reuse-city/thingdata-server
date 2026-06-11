@@ -2,9 +2,10 @@ from typing import Dict, Optional
 import psutil
 from datetime import datetime
 from sqlalchemy import text
-from app.database import get_db
+from app.database import SessionLocal
 from app.schemas import ComponentStatus, HealthResponse, HealthMetrics
 from app.logger import setup_logger
+from app.version import VERSION
 
 logger = setup_logger(__name__)
 
@@ -29,7 +30,7 @@ class HealthChecker:
             health_response = HealthResponse(
                 status="healthy" if db_status == ComponentStatus.HEALTHY else "unhealthy",
                 timestamp=datetime.utcnow().isoformat(),
-                version="0.1.2",
+                version=VERSION,
                 components={
                     "database": db_status,
                     "api": ComponentStatus.HEALTHY
@@ -48,7 +49,7 @@ class HealthChecker:
             return HealthResponse(
                 status="unhealthy",
                 timestamp=datetime.utcnow().isoformat(),
-                version="0.1.2",
+                version=VERSION,
                 components={
                     "database": ComponentStatus.UNHEALTHY,
                     "api": ComponentStatus.HEALTHY
@@ -58,29 +59,32 @@ class HealthChecker:
 
     async def _check_database(self) -> ComponentStatus:
         """Check database connectivity and performance."""
+        db = SessionLocal()
         try:
-            db = next(get_db())
-            
             # Basic connectivity check
             db.execute(text("SELECT 1"))
             
-            # Check connection pool
-            pool_info = db.execute(
-                text("""
-                    SELECT count(*) as connections
-                    FROM pg_stat_activity
-                    WHERE datname = current_database()
-                """)
-            ).scalar()
-            
-            if pool_info > 100:  # Simplified check
-                return ComponentStatus.DEGRADED
+            # Check connection pool (PostgreSQL specific, fail-safe for SQLite)
+            try:
+                pool_info = db.execute(
+                    text("""
+                        SELECT count(*) as connections
+                        FROM pg_stat_activity
+                        WHERE datname = current_database()
+                    """)
+                ).scalar()
+                if pool_info and pool_info > 100:  # Simplified check
+                    return ComponentStatus.DEGRADED
+            except Exception as pe:
+                logger.warning(f"Could not retrieve connection pool info: {str(pe)}")
                 
             return ComponentStatus.HEALTHY
             
         except Exception as e:
             logger.error(f"Database health check failed: {str(e)}")
             return ComponentStatus.UNHEALTHY
+        finally:
+            db.close()
 
     async def _collect_metrics(self) -> HealthMetrics:
         """Collect basic system metrics."""

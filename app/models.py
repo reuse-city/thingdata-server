@@ -1,7 +1,9 @@
 from sqlalchemy import Column, String, DateTime, ForeignKey, and_, select, union
 from sqlalchemy.orm import relationship, Session
 from datetime import datetime
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB as PostgresJSONB
+from sqlalchemy.types import JSON as SQLAlchemyJSON
+JSONB = SQLAlchemyJSON().with_variant(PostgresJSONB, "postgresql")
 from app.database import Base
 
 class Relationship(Base):
@@ -189,6 +191,40 @@ class Guide(Base):
             'thing_category': self.thing_category,
             'type': self.type,
             'content': self.content,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+class Instance(Base):
+    __tablename__ = "instances"
+
+    id = Column(String, primary_key=True)
+    uri = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=False)
+    type = Column(String, nullable=False)
+    endpoints = Column(JSONB, nullable=False)
+    capabilities = Column(JSONB, nullable=False)
+    languages = Column(JSONB, nullable=False)
+    trust_status = Column(String, nullable=False, default='verified')
+    public_key = Column(String, nullable=False)
+    last_seen = Column(DateTime, nullable=False, default=datetime.utcnow)
+    sync_status = Column(JSONB, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'uri': self.uri,
+            'name': self.name,
+            'type': self.type,
+            'endpoints': self.endpoints,
+            'capabilities': self.capabilities,
+            'languages': self.languages,
+            'trust_status': self.trust_status,
+            'public_key': self.public_key,
+            'last_seen': self.last_seen.isoformat() if self.last_seen else None,
+            'sync_status': self.sync_status,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

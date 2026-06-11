@@ -102,7 +102,7 @@ Example API calls for this workflow:
 curl -X POST http://localhost:8000/api/v1/things \
 -H "Content-Type: application/json" \
 -d '{
-  "type": "appliance",
+  "type": "device",
   "name": {
     "default": "Professional Coffee Machine XK-42",
     "translations": {

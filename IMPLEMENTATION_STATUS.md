@@ -29,6 +29,13 @@
 - Version tracking
 
 ### Recent Changes
+- Resolved environment variables validation crash (`extra = "ignore"`)
+- Fixed database connection leak in health check endpoint
+- Prevented duplicate logging handlers and made logger resilient to write permission issues
+- Isolated unit testing using in-memory SQLite database
+- Fixed relationship payload validation and UNIQUE constraints in unit tests
+- Created `scripts/init_sample_data.sh` wrapper script
+- Aligned documentation example types with security validation schemas
 - Added security validation system
 - Implemented request size limits
 - Added entity type validation
@@ -108,22 +115,24 @@
 
 ### Immediate Tasks
 1. Data Validation
-   - Implement pre-flight checks
-   - Add input validation
-   - Add response validation
-   - Add relationship validation
+   - [x] Implement pre-flight checks
+   - [x] Add input validation
+   - [x] Add response validation
+   - [x] Add relationship validation
 
 2. API Completion
-   - Implement search functionality
-   - Add batch operations
-   - Improve pagination
-   - Add filtering
+   - [ ] Implement search functionality
+   - [ ] Add batch operations
+   - [ ] Improve pagination
+   - [ ] Add filtering
+   - [x] Add CRUD DELETE endpoints
+   - [x] Add sub-resource relationship endpoints
 
 3. Testing Infrastructure
-   - Add unit tests
-   - Add integration tests
-   - Add API tests
-   - Add load tests
+   - [x] Add unit tests
+   - [ ] Add integration tests
+   - [ ] Add API tests
+   - [ ] Add load tests
 
 ### Future Tasks
 1. Federation Support

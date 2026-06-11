@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Request, status
+from fastapi import FastAPI, HTTPException, Depends, Request, status, Header
 from app.security import configure_security, SecurityValidator, SecurityException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
@@ -411,6 +411,119 @@ async def get_guide(guide_id: str, db: Session = Depends(get_db)):
     data = guide.to_dict()
     data['relationships'] = [r.to_dict() for r in guide.get_relationships(db)]
     return data
+
+# --- Sub-resource Relationships Endpoints ---
+
+@app.get("/api/v1/things/{thing_id}/relationships", response_model=List[RelationshipResponse])
+async def get_thing_relationships(thing_id: str, db: Session = Depends(get_db)):
+    """Get all relationships for a thing."""
+    thing = db.query(Thing).filter(Thing.id == thing_id).first()
+    if not thing:
+        raise HTTPException(status_code=404, detail="Thing not found")
+    return [r.to_dict() for r in thing.get_relationships(db)]
+
+@app.get("/api/v1/stories/{story_id}/relationships", response_model=List[RelationshipResponse])
+async def get_story_relationships(story_id: str, db: Session = Depends(get_db)):
+    """Get all relationships for a story."""
+    story = db.query(Story).filter(Story.id == story_id).first()
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+    return [r.to_dict() for r in story.get_relationships(db)]
+
+@app.get("/api/v1/guides/{guide_id}/relationships", response_model=List[RelationshipResponse])
+async def get_guide_relationships(guide_id: str, db: Session = Depends(get_db)):
+    """Get all relationships for a guide."""
+    guide = db.query(Guide).filter(Guide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Guide not found")
+    return [r.to_dict() for r in guide.get_relationships(db)]
+
+# --- DELETE Endpoints ---
+
+@app.delete("/api/v1/things/{thing_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_thing(
+    thing_id: str,
+    x_confirm_delete: bool = Header(..., alias="X-Confirm-Delete"),
+    db: Session = Depends(get_db)
+):
+    """Delete a thing and its associated relationships."""
+    if not x_confirm_delete:
+        raise HTTPException(status_code=400, detail="Must confirm delete with X-Confirm-Delete header")
+    thing = db.query(Thing).filter(Thing.id == thing_id).first()
+    if not thing:
+        raise HTTPException(status_code=404, detail="Thing not found")
+    
+    # Delete associated relationships
+    db.query(Relationship).filter(
+        ((Relationship.source_type == 'thing') & (Relationship.source_id == thing_id)) |
+        ((Relationship.target_type == 'thing') & (Relationship.target_id == thing_id))
+    ).delete(synchronize_session=False)
+
+    db.delete(thing)
+    db.commit()
+    logger.info(f"Deleted thing: {thing_id}")
+
+@app.delete("/api/v1/stories/{story_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_story(
+    story_id: str,
+    x_confirm_delete: bool = Header(..., alias="X-Confirm-Delete"),
+    db: Session = Depends(get_db)
+):
+    """Delete a story and its associated relationships."""
+    if not x_confirm_delete:
+        raise HTTPException(status_code=400, detail="Must confirm delete with X-Confirm-Delete header")
+    story = db.query(Story).filter(Story.id == story_id).first()
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+    
+    # Delete associated relationships
+    db.query(Relationship).filter(
+        ((Relationship.source_type == 'story') & (Relationship.source_id == story_id)) |
+        ((Relationship.target_type == 'story') & (Relationship.target_id == story_id))
+    ).delete(synchronize_session=False)
+
+    db.delete(story)
+    db.commit()
+    logger.info(f"Deleted story: {story_id}")
+
+@app.delete("/api/v1/guides/{guide_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_guide(
+    guide_id: str,
+    x_confirm_delete: bool = Header(..., alias="X-Confirm-Delete"),
+    db: Session = Depends(get_db)
+):
+    """Delete a guide and its associated relationships."""
+    if not x_confirm_delete:
+        raise HTTPException(status_code=400, detail="Must confirm delete with X-Confirm-Delete header")
+    guide = db.query(Guide).filter(Guide.id == guide_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Guide not found")
+    
+    # Delete associated relationships
+    db.query(Relationship).filter(
+        ((Relationship.source_type == 'guide') & (Relationship.source_id == guide_id)) |
+        ((Relationship.target_type == 'guide') & (Relationship.target_id == guide_id))
+    ).delete(synchronize_session=False)
+
+    db.delete(guide)
+    db.commit()
+    logger.info(f"Deleted guide: {guide_id}")
+
+@app.delete("/api/v1/relationships/{relationship_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_relationship(
+    relationship_id: str,
+    x_confirm_delete: bool = Header(..., alias="X-Confirm-Delete"),
+    db: Session = Depends(get_db)
+):
+    """Delete a relationship."""
+    if not x_confirm_delete:
+        raise HTTPException(status_code=400, detail="Must confirm delete with X-Confirm-Delete header")
+    relationship = db.query(Relationship).filter(Relationship.id == relationship_id).first()
+    if not relationship:
+        raise HTTPException(status_code=404, detail="Relationship not found")
+    db.delete(relationship)
+    db.commit()
+    logger.info(f"Deleted relationship: {relationship_id}")
 
 if __name__ == "__main__":
     import uvicorn

@@ -34,6 +34,22 @@ CREATE TABLE IF NOT EXISTS guides (
     updated_at TIMESTAMP WITH TIME ZONE
 );
 
+CREATE TABLE IF NOT EXISTS instances (
+    id TEXT PRIMARY KEY,
+    uri TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    endpoints JSONB NOT NULL,
+    capabilities JSONB NOT NULL,
+    languages JSONB NOT NULL,
+    trust_status TEXT NOT NULL DEFAULT 'verified',
+    public_key TEXT NOT NULL,
+    last_seen TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    sync_status JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
 CREATE TABLE IF NOT EXISTS relationships (
     id TEXT PRIMARY KEY,
     source_type TEXT NOT NULL CHECK (source_type IN ('thing', 'guide', 'story')),

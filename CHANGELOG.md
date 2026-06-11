@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-06-10
+
+### Added
+- Missing `Instance` database model in `app/models.py` and its table definition in `init-scripts/01-init.sql`.
+- CRUD `DELETE` endpoints for things, stories, guides, and relationships (requiring `X-Confirm-Delete` confirmation header).
+- Sub-resource `GET` relationships endpoints for things, stories, and guides.
+- `scripts/init_sample_data.sh` shell script wrapper for sample data setup.
+
+### Changed
+- Isolated unit test database in `tests/test_api.py` to in-memory SQLite to prevent destructive operations on live databases.
+- Bypassed Python 3.13 incompatibility by upgrading deprecated pins in `requirements.txt`.
+- Configured Pydantic Settings in `app/config.py` to ignore extra environment variables.
+- Updated examples in `docs/workflows.md` to use valid thing types matching security guidelines.
+
+### Fixed
+- Fixed database connection leak in health check endpoint by properly closing the session.
+- Fixed duplicate Stream/File logging handlers in `app/logger.py`.
+- Made logging system resilient to write permission failures by falling back to console logging.
+- Corrected unit test payload structures and resolved UNIQUE URI constraint violations.
+
 ## [0.1.4] - 2024-12-06
 
 ### Added
