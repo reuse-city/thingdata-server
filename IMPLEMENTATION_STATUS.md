@@ -21,6 +21,22 @@
 - Backup capabilities
 - Improved logging system
 
+#### Security & Access Control
+- User model & database registration
+- Password hashing via pure-Python `sha256_crypt` CryptContext
+- HMAC-SHA256 JWT token generation & local admin authentication (`get_current_user`)
+- Cryptographic peer request signature verification using RS256 public keys
+- In-memory client-IP sliding window rate limiting
+- Centralized `SecurityException` exception handling response formatting
+
+#### Federation System
+- WebFinger Discovery (`GET /.well-known/webfinger`) to resolve resource links
+- Connect peer endpoint (`POST /api/v1/federation/connect`)
+- Announce event endpoint (`POST /api/v1/federation/announce`)
+- Resource synchronization (`POST /api/v1/federation/sync`) supporting filters and timestamps
+- Peer discovery endpoint (`GET /api/v1/federation/discover`)
+- Network status monitoring (`GET /api/v1/federation/status`)
+
 #### Data Models
 - Flexible JSONB columns
 - Multi-language support
@@ -80,16 +96,16 @@
    - [x] Basic request validation
    - [x] Size limits
    - [x] Content validation
-   - Authentication pending
-   - Authorization pending
-   - Rate limiting pending
+   - [x] Authentication (JWT-based local admin auth)
+   - [x] Authorization (Local admin JWT guards & Federation peer public-key RS256 signature verification)
+   - [x] Rate limiting (In-memory sliding window)
    - Audit logging pending
 
 5. Federation
-   - Federation engine (`app/federation.py`) exists but routes are not exposed in FastAPI application
-   - Instance discovery endpoints not exposed
-   - Data synchronization endpoints pending
-   - Trust mechanisms needed
+   - [x] Federation engine routes exposed in FastAPI application
+   - [x] Instance discovery endpoints (WebFinger discovery & discover peers routes)
+   - [x] Data synchronization endpoints (Sync & announce event routes)
+   - [x] Trust mechanisms (RS256 peer verification)
    - Conflict resolution system pending
 
 ### Missing Features
@@ -104,17 +120,17 @@
    - Complex filtering
 
 2. Federation Support
-   - Federation router registration in main.py
-   - Instance discovery & connection
-   - Data synchronization
-   - Trust mechanisms
-   - Conflict resolution
+   - [x] Federation router registration in main.py
+   - [x] Instance discovery & connection
+   - [x] Data synchronization
+   - [x] Trust mechanisms
+   - Conflict resolution pending
 
 3. Security
-   - Authentication
-   - Authorization
-   - Rate limiting
-   - Audit logging
+   - [x] Authentication
+   - [x] Authorization
+   - [x] Rate limiting
+   - Audit logging pending
 
 4. Performance
    - Caching system
@@ -147,15 +163,15 @@
 
 ### Future Tasks
 1. Federation Support
-   - Design federation protocol
-   - Implement instance discovery
-   - Add synchronization
+   - [x] Design federation protocol
+   - [x] Implement instance discovery
+   - [x] Add synchronization
    - Add conflict resolution
 
 2. Security Implementation
-   - Add authentication
-   - Add authorization
-   - Add rate limiting
+   - [x] Add authentication
+   - [x] Add authorization
+   - [x] Add rate limiting
    - Add audit logging
 
 3. Performance Optimization

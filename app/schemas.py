@@ -383,7 +383,32 @@ class HealthResponse(BaseModel):
     components: Dict[str, ComponentStatus]
     metrics: HealthMetrics
 
-    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+# --- Authentication Schemas ---
+
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=6)
+    role: Optional[str] = "admin"
+
+class UserResponse(BaseModel):
+    id: str
+    username: str
+    role: str
+    created_at: str
+    updated_at: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
 
 
 # Update forward references

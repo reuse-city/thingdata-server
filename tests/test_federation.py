@@ -27,6 +27,11 @@ def test_setup():
         
     app.dependency_overrides[get_federation] = override_get_federation
     
+    from app.security import get_current_user, verify_federation_request
+    from app.models import User
+    app.dependency_overrides[get_current_user] = lambda: User(id="dummy", username="dummy_admin", role="admin")
+    app.dependency_overrides[verify_federation_request] = lambda: "https://repairhub-berlin.example.com"
+    
     with TestClient(app) as client:
         # Also set it on the app state directly
         client.app.state.federation = fed_manager
@@ -34,6 +39,8 @@ def test_setup():
         
     # Clean up overrides
     app.dependency_overrides.pop(get_federation, None)
+    app.dependency_overrides.pop(get_current_user, None)
+    app.dependency_overrides.pop(verify_federation_request, None)
     Base.metadata.drop_all(bind=engine)
 
 def test_webfinger_discovery_default(test_setup):

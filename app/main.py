@@ -10,15 +10,20 @@ import psutil
 from pathlib import Path
 from app.version import VERSION
 
+from fastapi.security import OAuth2PasswordRequestForm
 from app.database import get_db, init_db
-from app.models import Thing, Story, Guide, Relationship
+from app.models import Thing, Story, Guide, Relationship, User
 from app.schemas import (
     ThingCreate, ThingUpdate, ThingResponse,
     StoryCreate, StoryUpdate, StoryResponse,
     GuideCreate, GuideUpdate, GuideResponse,
     RelationshipCreate, RelationshipUpdate, RelationshipResponse,
     HealthResponse, ComponentStatus,
-    EntityType
+    EntityType, UserCreate, UserResponse, Token
+)
+from app.security import (
+    get_password_hash, verify_password, create_access_token,
+    get_current_user, verify_federation_request, rate_limit
 )
 
 from app.health import HealthChecker
@@ -127,6 +132,61 @@ def get_federation(request: Request) -> FederationManager:
     """Retrieve the federation manager from the application state."""
     return request.app.state.federation
 
+# --- Authentication & User Management Endpoints ---
+
+@app.post("/api/v1/auth/register", response_model=UserResponse, dependencies=[Depends(rate_limit(5, 60))])
+async def register_user(
+    user_in: UserCreate,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Register the first administrator user or subsequent users with admin authorization."""
+    existing_users_count = db.query(User).count()
+    if existing_users_count > 0:
+        # Require existing admin authorization
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            raise HTTPException(status_code=401, detail="Authentication required to register subsequent users")
+        token_parts = auth_header.split(" ")
+        token = token_parts[1] if len(token_parts) > 1 else token_parts[0]
+        await get_current_user(token=token, db=db)
+        
+    user_exists = db.query(User).filter(User.username == user_in.username).first()
+    if user_exists:
+        raise HTTPException(status_code=400, detail="Username already registered")
+        
+    db_user = User(
+        id=str(uuid.uuid4()),
+        username=user_in.username,
+        hashed_password=get_password_hash(user_in.password),
+        role=user_in.role or "admin"
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user.to_dict()
+
+@app.post("/api/v1/auth/token", response_model=Token, dependencies=[Depends(rate_limit(5, 60))])
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    """Exchange username/password for a local JWT access token."""
+    user = db.query(User).filter(User.username == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/api/v1/auth/me", response_model=UserResponse)
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    """Retrieve profile details of the authenticated administrator."""
+    return current_user.to_dict()
+
 @app.get('/favicon.ico')
 async def get_favicon():
     """Serve favicon."""
@@ -149,7 +209,11 @@ async def verify_entity_exists(db: Session, entity_type: str, entity_id: str) ->
     return False
 
 @app.post("/api/v1/things", response_model=ThingResponse)
-async def create_thing(thing: ThingCreate, db: Session = Depends(get_db)):
+async def create_thing(
+    thing: ThingCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Create a new thing."""
     try:
         thing_data = thing.model_dump(mode='json')
@@ -208,7 +272,11 @@ async def list_things(
             for thing in things]
 
 @app.post("/api/v1/stories", response_model=StoryResponse)
-async def create_story(story: StoryCreate, db: Session = Depends(get_db)):
+async def create_story(
+    story: StoryCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Create a new repair story."""
     try:
         if story.thing_id:
@@ -290,7 +358,11 @@ async def get_thing_stories(thing_id: str, db: Session = Depends(get_db)):
     return [story.to_dict() for story in stories]
 
 @app.post("/api/v1/relationships", response_model=RelationshipResponse)
-async def create_relationship(relationship: RelationshipCreate, db: Session = Depends(get_db)):
+async def create_relationship(
+    relationship: RelationshipCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Create a new relationship."""
     try:
         # Verify source exists
@@ -362,7 +434,11 @@ async def get_relationship(relationship_id: str, db: Session = Depends(get_db)):
     return relationship.to_dict()
 
 @app.post("/api/v1/guides", response_model=GuideResponse)
-async def create_guide(guide: GuideCreate, db: Session = Depends(get_db)):
+async def create_guide(
+    guide: GuideCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Create a new guide."""
     try:
         if guide.thing_id:
@@ -464,7 +540,8 @@ async def get_guide_relationships(guide_id: str, db: Session = Depends(get_db)):
 async def delete_thing(
     thing_id: str,
     x_confirm_delete: bool = Header(..., alias="X-Confirm-Delete"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Delete a thing and its associated relationships."""
     if not x_confirm_delete:
@@ -487,7 +564,8 @@ async def delete_thing(
 async def delete_story(
     story_id: str,
     x_confirm_delete: bool = Header(..., alias="X-Confirm-Delete"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Delete a story and its associated relationships."""
     if not x_confirm_delete:
@@ -510,7 +588,8 @@ async def delete_story(
 async def delete_guide(
     guide_id: str,
     x_confirm_delete: bool = Header(..., alias="X-Confirm-Delete"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Delete a guide and its associated relationships."""
     if not x_confirm_delete:
@@ -533,7 +612,8 @@ async def delete_guide(
 async def delete_relationship(
     relationship_id: str,
     x_confirm_delete: bool = Header(..., alias="X-Confirm-Delete"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Delete a relationship."""
     if not x_confirm_delete:
@@ -548,7 +628,12 @@ async def delete_relationship(
 # --- PUT Update Endpoints ---
 
 @app.put("/api/v1/things/{thing_id}", response_model=ThingResponse)
-async def update_thing(thing_id: str, thing_update: ThingUpdate, db: Session = Depends(get_db)):
+async def update_thing(
+    thing_id: str,
+    thing_update: ThingUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Update an existing thing."""
     db_thing = db.query(Thing).filter(Thing.id == thing_id).first()
     if not db_thing:
@@ -575,7 +660,12 @@ async def update_thing(thing_id: str, thing_update: ThingUpdate, db: Session = D
     return db_thing.to_dict()
 
 @app.put("/api/v1/stories/{story_id}", response_model=StoryResponse)
-async def update_story(story_id: str, story_update: StoryUpdate, db: Session = Depends(get_db)):
+async def update_story(
+    story_id: str,
+    story_update: StoryUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Update an existing story."""
     db_story = db.query(Story).filter(Story.id == story_id).first()
     if not db_story:
@@ -607,7 +697,12 @@ async def update_story(story_id: str, story_update: StoryUpdate, db: Session = D
     return db_story.to_dict()
 
 @app.put("/api/v1/guides/{guide_id}", response_model=GuideResponse)
-async def update_guide(guide_id: str, guide_update: GuideUpdate, db: Session = Depends(get_db)):
+async def update_guide(
+    guide_id: str,
+    guide_update: GuideUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Update an existing guide."""
     db_guide = db.query(Guide).filter(Guide.id == guide_id).first()
     if not db_guide:
@@ -631,7 +726,12 @@ async def update_guide(guide_id: str, guide_update: GuideUpdate, db: Session = D
     return db_guide.to_dict()
 
 @app.put("/api/v1/relationships/{relationship_id}", response_model=RelationshipResponse)
-async def update_relationship(relationship_id: str, relationship_update: RelationshipUpdate, db: Session = Depends(get_db)):
+async def update_relationship(
+    relationship_id: str,
+    relationship_update: RelationshipUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Update an existing relationship."""
     db_rel = db.query(Relationship).filter(Relationship.id == relationship_id).first()
     if not db_rel:
@@ -743,13 +843,20 @@ async def connect_peer(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/v1/federation/announce")
-async def announce_event(payload: dict):
+async def announce_event(
+    payload: dict,
+    peer_uri: str = Depends(verify_federation_request)
+):
     """Receive an announcement of new content from a federation peer."""
     logger.info(f"Received federation announcement: {payload}")
     return {"status": "announced", "message": "Announcement received"}
 
 @app.post("/api/v1/federation/sync")
-async def sync_resources(payload: dict, db: Session = Depends(get_db)):
+async def sync_resources(
+    payload: dict,
+    db: Session = Depends(get_db),
+    peer_uri: str = Depends(verify_federation_request)
+):
     """Synchronize resources requested by a peer."""
     uris = payload.get("uris", [])
     since_str = payload.get("since")

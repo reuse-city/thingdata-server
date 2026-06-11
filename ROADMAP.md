@@ -4,6 +4,16 @@
 
 ## Current Phase - Core Functionality Enhancement 🚧
 
+### Completed (v0.1.6) ✅
+- Authentication system (HMAC-SHA256 JWT tokens for local admin users)
+- Authorization framework (admin mutation endpoints & RS256 peer signature verification)
+- Rate limiting (in-memory sliding window per client IP)
+- Exception response mapping for SecurityExceptions (standardizing `{"error": "..."}`)
+- Expose federation engine routes in `app/main.py`
+- Expose discovery endpoints (`GET /.well-known/webfinger` & `GET /api/v1/federation/discover`)
+- Expose interaction routes (`POST /api/v1/federation/connect` & `POST /api/v1/federation/announce`)
+- Expose synchronization endpoints (`POST /api/v1/federation/sync` & `GET /api/v1/federation/status`)
+
 ### Completed (v0.1.4) ✅
 - Security validation system
 - Request size limits
@@ -20,9 +30,6 @@
 - Enhanced metadata support
 
 ### In Progress
-- Authentication system
-- Authorization framework
-- Rate limiting
 - Audit logging
 - Search functionality
   - Basic text search
@@ -71,13 +78,14 @@
   - Implement `GET /api/v1/guides/{id}/archive`
 - Batch operations & import/export capabilities
 
-### Phase 4: Federation System
+### Phase 4: Federation System ✅
 > Design documents available in docs/design/
-- Mount federation router in `app/main.py`
-- Expose discovery endpoints (`GET /.well-known/webfinger` & `GET /api/v1/federation/discover`)
-- Expose interaction routes (`POST /api/v1/federation/connect` & `POST /api/v1/federation/announce`)
-- Expose synchronization endpoints (`POST /api/v1/federation/sync` & `GET /api/v1/federation/status`)
-- Instance discovery, trust system, and conflict resolution
+- [x] Mount federation router in `app/main.py`
+- [x] Expose discovery endpoints (`GET /.well-known/webfinger` & `GET /api/v1/federation/discover`)
+- [x] Expose interaction routes (`POST /api/v1/federation/connect` & `POST /api/v1/federation/announce`)
+- [x] Expose synchronization endpoints (`POST /api/v1/federation/sync` & `GET /api/v1/federation/status`)
+- [x] Instance discovery, trust system
+- Conflict resolution pending
 
 ### Phase 5: Impact & Analytics
 - Environmental metrics

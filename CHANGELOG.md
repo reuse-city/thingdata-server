@@ -6,6 +6,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-06-11
+
+### Added
+- User database model and authentication schema definitions.
+- Local administration endpoints (`POST /api/v1/auth/register`, `POST /api/v1/auth/token`, `GET /api/v1/auth/me`).
+- Local administration route guards requiring HMAC-SHA256 JWT tokens.
+- Cryptographic signature validation (RS256) for federation endpoints (`/announce` and `/sync`) using peer public keys.
+- Client-IP sliding window rate limiting for authentication and register routes.
+- Federation endpoints (`GET /.well-known/webfinger`, `POST /api/v1/federation/connect`, `POST /api/v1/federation/announce`, `POST /api/v1/federation/sync`, `GET /api/v1/federation/discover`, `GET /api/v1/federation/status`).
+- Exception handler for `SecurityException` returning structured `{"error": ...}` JSON responses.
+
+### Changed
+- Shifted default password hashing context to pure-Python `sha256_crypt` scheme to bypass `bcrypt` binary installation dependency issues.
+- Updated `SecurityMiddleware` to exempt OAuth2 form-urlencoded token endpoints from strict JSON content-type verification.
+
+### Fixed
+- Fixed timezone-naive datetime `.timestamp()` conversion in signature validation tests by using aware datetimes and `time.time()`.
+- Isolated rate limiter history state checks in test suite setups.
+
 ## [0.1.5] - 2026-06-10
 
 ### Added

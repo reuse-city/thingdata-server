@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # Federation
     INSTANCE_URI: str = "http://localhost:8000"
     
+    # Security
+    JWT_SECRET_KEY: str = "your-secret-key-here"
+    JWT_ALGORITHM: str = "HS256"
+    
     # Paths
     BASE_DIR: Path = Path(__file__).parent.parent
     LOG_DIR: Path = BASE_DIR / "logs"

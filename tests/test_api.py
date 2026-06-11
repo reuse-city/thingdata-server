@@ -16,9 +16,14 @@ def test_client():
     """Create test client."""
     init_db()
     
+    from app.models import User
+    from app.security import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: User(id="dummy", username="dummy_admin", role="admin")
+    
     with TestClient(app) as client:
         yield client
         
+    app.dependency_overrides.pop(get_current_user, None)
     Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture
