@@ -99,5 +99,5 @@ See our [Contributing Guide](CONTRIBUTING.md) for information on how to help wit
 ## Documentation
 - [API Documentation](docs/api/README.md)
 - [Implementation Status](IMPLEMENTATION_STATUS.md)
-- [Development Guide](docs/development.md)
+- [Development Guide](docs/workflows.md)
 - [Design Documents](docs/design/) - Future feature designs

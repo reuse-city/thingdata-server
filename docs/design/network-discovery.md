@@ -1,7 +1,7 @@
 # ThingData Network Discovery
 
 ## Documentation Overview
-- [Core API Documentation](README.md)
+- [Core API Documentation](../api/README.md)
 - [Federation Protocol](federation.md)
 - Current Document: Network Discovery
 - [Example Workflows](../workflows.md)
@@ -261,5 +261,5 @@ curl -X PUT http://localhost:8000/api/v1/federation/discovery \
 
 ## Related Documentation
 - See [Federation Protocol](federation.md) for more details about instance communication
-- See [Advanced Operations](advanced-operations.md) for managing federation relationships
+- See [Advanced Operations](../api/advanced-operations.md) for managing federation relationships
 - See [Example Workflows](../workflows.md) for practical federation examples

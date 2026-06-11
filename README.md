@@ -94,12 +94,18 @@ This will create sample data including:
 
 6. Testing
 
-6.1. Install test dependencies:
+6.1. Create and activate a Python virtual environment:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+6.2. Install test dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-6.2. Run tests:
+6.3. Run tests:
 ```bash
 pytest
 ```
@@ -180,7 +186,7 @@ Flexible relationship system supporting all entity types:
 
 See our detailed documentation for:
 - [API Documentation](docs/api/README.md)
-- [Advanced Operations](docs/advanced-operations.md)
+- [Advanced Operations](docs/api/advanced-operations.md)
 - [Implementation Status](IMPLEMENTATION_STATUS.md)
 - [Development Workflows](docs/workflows.md)
 

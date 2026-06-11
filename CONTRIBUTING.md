@@ -16,11 +16,12 @@ The AGPL-3.0 is a copyleft license that requires anyone who distributes or modif
 
 1. Fork the repo
 2. Create a branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests (`pytest`)
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to your branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+3. Set up a virtual environment and install dependencies (see [README.md](README.md) for details)
+4. Make your changes
+5. Run tests (`pytest` inside your active virtual environment)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to your branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
 ## Code Style
 
@@ -39,8 +40,8 @@ The AGPL-3.0 is a copyleft license that requires anyone who distributes or modif
 
 ## Pull Request Process
 
-1. Update the README.md with details of changes if needed
-2. Update the API documentation if you've changed endpoints
+1. Update the [README.md](README.md) with details of changes if needed
+2. Update the [API documentation](docs/api/README.md) if you've changed endpoints
 3. Add tests for new functionality
 4. Update `requirements.txt` if you've added dependencies
 5. The PR will be merged once you have the sign-off of a maintainer

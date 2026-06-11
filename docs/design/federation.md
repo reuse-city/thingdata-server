@@ -2,8 +2,8 @@
 
 ## Documentation Overview
 This documentation is part of a series:
-- [Core API Documentation](README.md) - Basic concepts and operations
-- [Advanced Operations](advanced-operations.md) - Conflict resolution and data management
+- [Core API Documentation](../api/README.md) - Basic concepts and operations
+- [Advanced Operations](../api/advanced-operations.md) - Conflict resolution and data management
 - Current Document: Federation Protocol
 - [Example Workflows](../workflows.md) - Including federation workflows
 
@@ -217,6 +217,6 @@ curl -X POST http://localhost:8000/api/v1/federation/announce \
 - Changes are versioned and auditable
 
 ## Related Documentation
-- See [Advanced Operations](advanced-operations.md) for conflict resolution
+- See [Advanced Operations](../api/advanced-operations.md) for conflict resolution
 - See [Example Workflows](../workflows.md) for practical examples
-- See [Core API](README.md) for basic operations
+- See [Core API](../api/README.md) for basic operations
