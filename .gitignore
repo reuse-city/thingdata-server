@@ -32,6 +32,7 @@ env/
 *.swo
 .project
 .pydevproject
+*.code-workspace
 
 # Data persistence
 postgres_data/
